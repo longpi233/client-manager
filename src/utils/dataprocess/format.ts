@@ -26,3 +26,52 @@ export function randomNum(min: number, max?: number): number {
 export function removeHtmlTags(str: string = ''): string {
   return str.replace(/<[^>]*>/g, '')
 }
+
+// 格式化日期时间 - 通用格式化函数
+export function formatDateTime(dateStr: string | Date | number): string {
+  if (!dateStr) return '-'
+
+  let date: Date
+  if (typeof dateStr === 'string') {
+    date = new Date(dateStr)
+  } else if (typeof dateStr === 'number') {
+    date = new Date(dateStr)
+  } else {
+    date = dateStr
+  }
+
+  // 检查日期是否有效
+  if (isNaN(date.getTime())) return '-'
+
+  return date.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+// 格式化性别
+export function formatGender(gender: string | number): string {
+  if (!gender && gender !== 0) return '-'
+
+  const genderStr = String(gender)
+  return genderStr === '1' ? '男' : genderStr === '2' ? '女' : genderStr
+}
+
+// 格式化金额
+export function formatAmount(amount: number | string): string {
+  if (!amount || amount === 0) return '-'
+
+  const num = typeof amount === 'string' ? parseFloat(amount) : amount
+  if (isNaN(num)) return '-'
+
+  return `¥${num.toFixed(2)}`
+}
+
+// 格式化百分比
+export function formatPercent(value: number, decimals: number = 2): string {
+  if (typeof value !== 'number' || isNaN(value)) return '-'
+  return `${(value * 100).toFixed(decimals)}%`
+}

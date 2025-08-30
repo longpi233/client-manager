@@ -15,11 +15,6 @@
     "commit": "git-cz",
     "clean:dev": "tsx scripts/clean-dev.ts"
   },
-  "config": {
-    "commitizen": {
-      "path": "node_modules/cz-git"
-    }
-  },
   "lint-staged": {
     "*.{js,ts,mjs,mts,tsx}": [
       "eslint --fix",
@@ -49,6 +44,7 @@
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.1",
+    "@tauri-apps/api": "^2.8.0",
     "@vue/reactivity": "^3.4.35",
     "@vueuse/core": "^11.0.0",
     "@wangeditor/editor": "^5.1.23",
@@ -64,6 +60,7 @@
     "nprogress": "^0.2.0",
     "pinia": "^3.0.2",
     "pinia-plugin-persistedstate": "^4.3.0",
+    "pinyin-pro": "^3.26.0",
     "qrcode.vue": "^3.6.0",
     "vue": "^3.5.12",
     "vue-draggable-plus": "^0.6.0",
@@ -76,14 +73,13 @@
     "@commitlint/cli": "^19.4.1",
     "@commitlint/config-conventional": "^19.4.1",
     "@eslint/js": "^9.9.1",
-    "@tauri-apps/cli": "^2.7.1",
+    "@tauri-apps/cli": "^2.8.3",
     "@types/node": "^22.1.0",
     "@typescript-eslint/eslint-plugin": "^8.3.0",
     "@typescript-eslint/parser": "^8.3.0",
     "@vitejs/plugin-vue": "^5.2.1",
     "@vue/compiler-sfc": "^3.0.5",
     "commitizen": "^4.3.0",
-    "cz-git": "^1.11.1",
     "eslint": "^9.9.1",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-prettier": "^5.2.1",

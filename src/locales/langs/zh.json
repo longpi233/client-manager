@@ -206,8 +206,25 @@
       "title": "内嵌页面"
     },
     "dashboard": {
-      "title": "仪表盘",
-      "console": "工作台"
+      "title": "主页",
+      "console": "工作台",
+      "information": "机构信息"
+    },
+    "healing": {
+      "title": "健康诊所",
+      "customerRegister": "散客登记",
+      "medicalRecord": "门诊病历",
+      "chineseMedicinePrescription": "中药处方"
+    },
+    "management": {
+      "title": "诊所管理",
+      "healingItem": "诊疗项目",
+      "chineseMedicineItem": "中药管理"
+    },
+    "data": {
+      "title": "数据管理",
+      "dataInquiry": "资料查询",
+      "outpatientLog": "门诊日志"
     },
     "result": {
       "title": "结果页面",

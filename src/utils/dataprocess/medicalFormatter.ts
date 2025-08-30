@@ -1,0 +1,156 @@
+/**
+ * 医疗系统专用格式化工具函数
+ */
+
+import {
+  formatDateTime as baseFormatDateTime,
+  formatGender as baseFormatGender,
+  formatAmount as baseFormatAmount
+} from './format'
+import {
+  GenderMap,
+  TradeTypeMap,
+  DataTypeMap,
+  QueryTypeMap,
+  GenderTagTypeMap,
+  TradeTypeTagTypeMap,
+  DataTypeTagTypeMap,
+  type TagTypeEnum
+} from '@/enums/medicalEnum'
+
+// 重新导出基础格式化函数
+export {
+  baseFormatDateTime as formatDateTime,
+  baseFormatGender as formatGender,
+  baseFormatAmount as formatAmount
+}
+
+/**
+ * 获取性别名称
+ * @param gender 性别值 ('1' | '2' | string)
+ * @returns 性别中文名称
+ */
+export function getGenderName(gender: string | number): string {
+  if (!gender && gender !== 0) return '-'
+  const genderStr = String(gender)
+  return GenderMap[genderStr as keyof typeof GenderMap] || genderStr
+}
+
+/**
+ * 获取结算类型名称
+ * @param type 结算类型值
+ * @returns 结算类型中文名称
+ */
+export function getTradeTypeName(type: string): string {
+  if (!type) return '-'
+  return TradeTypeMap[type as keyof typeof TradeTypeMap] || type
+}
+
+/**
+ * 获取数据类型名称
+ * @param type 数据类型值
+ * @returns 数据类型中文名称
+ */
+export function getDataTypeName(type: string): string {
+  if (!type) return '-'
+  return DataTypeMap[type as keyof typeof DataTypeMap] || type
+}
+
+/**
+ * 获取查询类型名称
+ * @param type 查询类型值
+ * @returns 查询类型中文名称
+ */
+export function getQueryTypeName(type: string): string {
+  if (!type) return '-'
+  return QueryTypeMap[type as keyof typeof QueryTypeMap] || type
+}
+
+/**
+ * 获取性别标签类型
+ * @param gender 性别值
+ * @returns Element Plus 标签类型
+ */
+export function getGenderTagType(gender: string): TagTypeEnum {
+  return GenderTagTypeMap[gender as keyof typeof GenderTagTypeMap] || 'info'
+}
+
+/**
+ * 获取结算类型标签类型
+ * @param type 结算类型值
+ * @returns Element Plus 标签类型
+ */
+export function getTradeTypeTagType(type: string): TagTypeEnum {
+  return TradeTypeTagTypeMap[type as keyof typeof TradeTypeTagTypeMap] || 'info'
+}
+
+/**
+ * 获取数据类型标签类型
+ * @param type 数据类型值
+ * @returns Element Plus 标签类型
+ */
+export function getDataTypeTagType(type: string): TagTypeEnum {
+  return DataTypeTagTypeMap[type as keyof typeof DataTypeTagTypeMap] || 'info'
+}
+
+/**
+ * 格式化付数
+ * @param doses 付数
+ * @returns 格式化后的付数字符串
+ */
+export function formatDoses(doses: number | string): string {
+  if (!doses && doses !== 0) return '-'
+  return `${doses}付`
+}
+
+/**
+ * 格式化年龄
+ * @param age 年龄
+ * @returns 格式化后的年龄字符串
+ */
+export function formatAge(age: number | string): string {
+  if (!age && age !== 0) return '-'
+  return `${age}岁`
+}
+
+/**
+ * 生成查询时间段文本
+ * @param queryType 查询类型
+ * @param params 查询参数对象
+ * @returns 查询时间段的中文描述
+ */
+export function generateQueryPeriodText(
+  queryType: string,
+  params: {
+    month?: string
+    year?: string
+    dateRange?: string[]
+  }
+): string {
+  if (queryType === 'month' && params.month) {
+    return `${params.month}月份`
+  } else if (queryType === 'year' && params.year) {
+    return `${params.year}年全年`
+  } else if (queryType === 'custom' && params.dateRange?.length === 2) {
+    return `${params.dateRange[0]} 至 ${params.dateRange[1]}`
+  }
+  return '当前查询'
+}
+
+/**
+ * 生成导出文件名
+ * @param prefix 文件名前缀
+ * @param conditions 查询条件
+ * @returns 格式化的文件名
+ */
+export function generateExportFilename(prefix: string, conditions: string[] = []): string {
+  const now = new Date()
+  const timestamp = now.toISOString().replace(/[:.]/g, '-').slice(0, 19)
+
+  let conditionText = ''
+  if (conditions.length > 0) {
+    conditionText = '_' + conditions.join('_')
+  }
+
+  return `${prefix}${conditionText}_${timestamp}`
+}

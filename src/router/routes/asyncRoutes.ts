@@ -21,16 +21,16 @@ export const asyncRoutes: AppRouteRecord[] = [
     component: RoutesAlias.Layout,
     meta: {
       title: 'menus.dashboard.title',
-      icon: '&#xe721;',
+      icon: '&#xe6cc;',
       roles: ['R_SUPER', 'R_ADMIN']
     },
     children: [
       {
-        path: 'console',
-        name: 'Console',
-        component: RoutesAlias.Dashboard,
+        name: 'Information',
+        path: 'information',
+        component: RoutesAlias.Information,
         meta: {
-          title: 'menus.dashboard.console',
+          title: 'menus.dashboard.information',
           keepAlive: false,
           fixedTab: true
         }
@@ -38,134 +38,96 @@ export const asyncRoutes: AppRouteRecord[] = [
     ]
   },
   {
-    path: '/system',
-    name: 'System',
+    name: 'Healing',
+    path: '/healing',
     component: RoutesAlias.Layout,
     meta: {
-      title: 'menus.system.title',
-      icon: '&#xe7b9;',
-      roles: ['R_SUPER', 'R_ADMIN']
+      title: 'menus.healing.title',
+      icon: '&#xe8b0;'
     },
     children: [
       {
-        path: 'user',
-        name: 'User',
-        component: RoutesAlias.User,
+        name: 'CustomerRegister',
+        path: 'customer-register',
+        component: RoutesAlias.CustomerRegister,
         meta: {
-          title: 'menus.system.user',
-          keepAlive: true,
-          roles: ['R_SUPER', 'R_ADMIN']
-        }
-      },
-      {
-        path: 'role',
-        name: 'Role',
-        component: RoutesAlias.Role,
-        meta: {
-          title: 'menus.system.role',
-          keepAlive: true,
-          roles: ['R_SUPER']
-        }
-      },
-      {
-        path: 'user-center',
-        name: 'UserCenter',
-        component: RoutesAlias.UserCenter,
-        meta: {
-          title: 'menus.system.userCenter',
-          isHide: true,
-          keepAlive: true,
-          isHideTab: true
-        }
-      },
-      {
-        path: 'menu',
-        name: 'Menus',
-        component: RoutesAlias.Menu,
-        meta: {
-          title: 'menus.system.menu',
-          keepAlive: true,
-          roles: ['R_SUPER'],
-          authList: [
-            {
-              title: '新增',
-              authMark: 'add'
-            },
-            {
-              title: '编辑',
-              authMark: 'edit'
-            },
-            {
-              title: '删除',
-              authMark: 'delete'
-            }
-          ]
-        }
-      }
-    ]
-  },
-  {
-    path: '/result',
-    name: 'Result',
-    component: RoutesAlias.Layout,
-    meta: {
-      title: 'menus.result.title',
-      icon: '&#xe715;'
-    },
-    children: [
-      {
-        path: 'success',
-        name: 'ResultSuccess',
-        component: RoutesAlias.Success,
-        meta: {
-          title: 'menus.result.success',
+          title: 'menus.healing.customerRegister',
           keepAlive: true
         }
       },
       {
-        path: 'fail',
-        name: 'ResultFail',
-        component: RoutesAlias.Fail,
+        name: 'MedicalRecord',
+        path: 'medical-record',
+        component: RoutesAlias.MedicalRecord,
         meta: {
-          title: 'menus.result.fail',
+          title: 'menus.healing.medicalRecord',
+          keepAlive: true
+        }
+      },
+      {
+        name: 'ChineseMedicinePrescription',
+        path: 'chinese-medicine-prescription',
+        component: RoutesAlias.ChineseMedicinePrescription,
+        meta: {
+          title: 'menus.healing.chineseMedicinePrescription',
           keepAlive: true
         }
       }
     ]
   },
   {
-    path: '/exception',
-    name: 'Exception',
+    name: 'Management',
+    path: '/management',
     component: RoutesAlias.Layout,
     meta: {
-      title: 'menus.exception.title',
-      icon: '&#xe820;'
+      title: 'menus.management.title',
+      icon: '&#xe7ba;'
     },
     children: [
       {
-        path: '403',
-        name: '403',
-        component: RoutesAlias.Exception403,
+        name: 'HealingItem',
+        path: 'healing-item',
+        component: RoutesAlias.HealingItem,
         meta: {
-          title: 'menus.exception.forbidden',
+          title: 'menus.management.healingItem',
           keepAlive: true
         }
       },
       {
-        path: '404',
-        name: '404',
-        component: RoutesAlias.Exception404,
+        name: 'ChineseMedicineItem',
+        path: 'chinese-medicine-item',
+        component: RoutesAlias.ChineseMedicineItem,
         meta: {
-          title: 'menus.exception.notFound',
+          title: 'menus.management.chineseMedicineItem',
+          keepAlive: true
+        }
+      }
+    ]
+  },
+  {
+    name: 'Data',
+    path: '/data',
+    component: RoutesAlias.Layout,
+    meta: {
+      title: 'menus.data.title',
+      icon: '&#xe7d9;'
+    },
+    children: [
+      {
+        name: 'DataInquiry',
+        path: 'data-inquiry',
+        component: RoutesAlias.DataInquiry,
+        meta: {
+          title: 'menus.data.dataInquiry',
           keepAlive: true
         }
       },
       {
-        path: '500',
-        name: '500',
-        component: RoutesAlias.Exception500,
+        name: 'OutpatientLog',
+        path: 'outpatient-log',
+        component: RoutesAlias.OutpatientLog,
         meta: {
-          title: 'menus.exception.serverError',
+          title: 'menus.data.outpatientLog',
           keepAlive: true
         }
       }

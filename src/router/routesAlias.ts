@@ -19,6 +19,20 @@ export enum RoutesAlias {
 
   // 仪表板
   Dashboard = '/dashboard/console', // 工作台
+  Information = '/dashboard/information', // 机构信息
+
+  // 健康诊所
+  CustomerRegister = '/healing/customer-register', // 散客登记
+  MedicalRecord = '/healing/medical-record', // 病历管理
+  ChineseMedicinePrescription = '/healing/chinese-medicine-prescription', // 中药处方
+
+  // 诊所管理
+  HealingItem = '/management/healing-item', // 诊疗项目
+  ChineseMedicineItem = '/management/chinese-medicine-item', // 中药管理
+
+  // 数据管理
+  DataInquiry = '/data/data-inquiry', // 资料查询
+  OutpatientLog = '/data/outpatient-log', // 门诊日志
 
   // 系统管理
   User = '/system/user', // 账户

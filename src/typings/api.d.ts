@@ -37,6 +37,120 @@ declare namespace Api {
     type EnableStatus = '1' | '2'
   }
 
+  /** 机构管理类型 */
+  namespace Institution {
+    /** 医师信息 */
+    interface Doctor {
+      /** 医师ID */
+      id?: number
+      /** 医师姓名 */
+      name: string
+      /** 医师职称 */
+      title?: string
+      /** 专业科室 */
+      department?: string
+      /** 状态 */
+      status?: Common.EnableStatus
+    }
+
+    /** 机构信息 */
+    interface Info {
+      /** 机构ID */
+      id?: number
+      /** 机构名称 */
+      institution_name: string
+      /** 科室设置 */
+      department_settings: string
+      /** 医师管理 */
+      doctor_management: Doctor[]
+      /** 创建时间 */
+      create_time?: string
+      /** 更新时间 */
+      update_time?: string
+    }
+
+    /** 机构信息更新参数 */
+    type UpdateParams = {
+      institution_name: string
+      department_settings: string
+      doctor_management: Doctor[]
+    }
+  }
+
+  /** 散客登记类型 */
+  namespace Customer {
+    /** 性别枚举 */
+    type Gender = '1' | '2' // 1-男, 2-女
+
+    /** 结算类型枚举 */
+    type TradeType = '1' | '2' | '3' // 1-现金结算, 2-省直医保, 3-武汉医保
+
+    /** 治疗项目 */
+    interface TreatmentItem {
+      /** 治疗项目名称 */
+      treatment_item: string
+      /** 数量 */
+      count: number
+      /** 单价 */
+      unit_price?: number
+      /** 总价 */
+      total_price?: number
+    }
+
+    /** 散客信息 */
+    interface Info {
+      /** ID */
+      id?: number
+      /** 患者姓名 */
+      customer_name: string
+      /** 性别 */
+      gender: Gender
+      /** 年龄 */
+      age: number
+      /** 联系电话 */
+      telephone: string
+      /** 就诊时间 */
+      time_of_visit: string
+      /** 结算类型 */
+      trade_type: TradeType
+      /** 诊断信息 */
+      diagnosis: string
+      /** 备注 */
+      note?: string
+      /** 治疗项目 */
+      treatment: TreatmentItem[]
+      /** 总金额 */
+      total_amount: number
+      /** 创建时间 */
+      create_time?: string
+      /** 更新时间 */
+      update_time?: string
+    }
+
+    /** 创建散客参数 */
+    type CreateParams = Omit<Info, 'id' | 'create_time' | 'update_time'>
+
+    /** 散客列表搜索参数 */
+    interface SearchParams extends Common.PaginatingSearchParams {
+      /** 患者姓名 */
+      customer_name?: string
+      /** 联系电话 */
+      telephone?: string
+      /** 结算类型 */
+      trade_type?: TradeType
+      /** 开始时间 */
+      start_time?: string
+      /** 结束时间 */
+      end_time?: string
+    }
+
+    /** 散客列表响应 */
+    interface ListResponse extends Common.PaginatingParams {
+      /** 记录列表 */
+      records: Info[]
+    }
+  }
+
   /** 认证类型 */
   namespace Auth {
     /** 登录参数 */
@@ -88,6 +202,241 @@ declare namespace Api {
       userPhone: string
       userEmail: string
       userRoles: string[]
+    }
+  }
+
+  /** 康复项目类型 */
+  namespace Healing {
+    /** 康复项目状态枚举 */
+    type Status = '1' | '2' // 1: 启用, 2: 禁用
+
+    /** 康复项目类别枚举 */
+    type Category = '理疗' | '针灸' | '按摩' | '康复训练' | '中医调理'
+
+    /** 康复项目基础信息 */
+    interface Item {
+      /** 项目ID */
+      id?: number
+      /** 项目名称 */
+      name: string
+      /** 项目描述 */
+      description?: string
+      /** 项目价格 */
+      price: number
+      /** 项目类别 */
+      category: Category
+      /** 项目状态 */
+      status: Status
+      /** 创建时间 */
+      create_time?: string
+      /** 更新时间 */
+      update_time?: string
+    }
+
+    /** 搜索参数 */
+    interface SearchParams extends Common.PaginatingSearchParams {
+      /** 项目名称（支持拼音搜索） */
+      name?: string
+      /** 项目类别 */
+      category?: Category
+      /** 项目状态 */
+      status?: Status
+    }
+
+    /** 创建参数 */
+    interface CreateParams {
+      /** 项目名称 */
+      name: string
+      /** 项目描述 */
+      description?: string
+      /** 项目价格 */
+      price: number
+      /** 项目类别 */
+      category: Category
+      /** 项目状态 */
+      status: Status
+    }
+
+    /** 更新参数 */
+    interface UpdateParams extends CreateParams {
+      /** 项目ID */
+      id: number
+    }
+
+    /** 列表响应 */
+    interface ListResponse extends Common.PaginatingParams {
+      /** 康复项目列表 */
+      records: Item[]
+    }
+
+    /** 康复项目统计信息 */
+    interface Statistics {
+      /** 总项目数 */
+      total: number
+      /** 启用项目数 */
+      enabled: number
+      /** 禁用项目数 */
+      disabled: number
+      /** 按类别统计 */
+      byCategory: Record<Category, number>
+    }
+  }
+
+  /** 中药管理类型 */
+  namespace ChineseMedicine {
+    /** 中药状态枚举 */
+    type Status = '1' | '2' // 1: 启用, 2: 禁用
+
+    /** 中药基础信息 */
+    interface Item {
+      /** 中药ID */
+      id?: number
+      /** 中药名称 */
+      name: string
+      /** 中药描述 */
+      description?: string
+      /** 中药单价 */
+      price: number
+      /** 中药状态 */
+      status: Status
+      /** 创建时间 */
+      create_time?: string
+      /** 更新时间 */
+      update_time?: string
+    }
+
+    /** 搜索参数 */
+    interface SearchParams extends Common.PaginatingSearchParams {
+      /** 中药名称（支持拼音搜索） */
+      name?: string
+      /** 中药状态 */
+      status?: Status
+    }
+
+    /** 创建参数 */
+    interface CreateParams {
+      /** 中药名称 */
+      name: string
+      /** 中药描述 */
+      description?: string
+      /** 中药单价 */
+      price: number
+      /** 中药状态 */
+      status: Status
+    }
+
+    /** 更新参数 */
+    interface UpdateParams extends CreateParams {
+      /** 中药ID */
+      id: number
+    }
+
+    /** 列表响应 */
+    interface ListResponse extends Common.PaginatingParams {
+      /** 中药列表 */
+      records: Item[]
+    }
+
+    /** 中药统计信息 */
+    interface Statistics {
+      /** 总中药数 */
+      total: number
+      /** 启用中药数 */
+      enabled: number
+      /** 禁用中药数 */
+      disabled: number
+    }
+  }
+
+  /** 门诊病历类型 */
+  namespace MedicalRecord {
+    /** 性别枚举 */
+    type Gender = '1' | '2' // 1-男, 2-女
+
+    /** 结算类型枚举 */
+    type TradeType = '1' | '2' | '3' // 1-现金结算, 2-省直医保, 3-武汉医保
+
+    /** 治疗项目 */
+    interface TreatmentItem {
+      /** 治疗项目名称 */
+      treatment_item: string
+      /** 数量 */
+      count: number
+      /** 单价 */
+      unit_price?: number
+      /** 总价 */
+      total_price?: number
+    }
+
+    /** 门诊病历信息 */
+    interface Info {
+      /** ID */
+      id?: number
+      /** 患者姓名 */
+      customer_name: string
+      /** 性别 */
+      gender: Gender
+      /** 年龄 */
+      age: number
+      /** 联系电话 */
+      telephone: string
+      /** 就诊时间 */
+      time_of_visit: string
+      /** 结算类型 */
+      trade_type: TradeType
+      /** 主诉 */
+      chief_complaint: string
+      /** 现病史 */
+      illness_history: string
+      /** 体格检查 */
+      physical_examination: string
+      /** 既往史 */
+      past_history: string
+      /** 实验室检查 */
+      laboratory_examination: string
+      /** 诊断信息 */
+      diagnosis: string
+      /** 治法治则 */
+      treatment_method: string
+      /** 备注 */
+      note?: string
+      /** 治疗项目 */
+      treatment: TreatmentItem[]
+      /** 总金额 */
+      total_amount: number
+      /** 医师ID */
+      doctor_id: number
+      /** 医师姓名 */
+      doctor_name?: string
+      /** 创建时间 */
+      create_time?: string
+      /** 更新时间 */
+      update_time?: string
+    }
+
+    /** 创建门诊病历参数 */
+    type CreateParams = Omit<Info, 'id' | 'doctor_name' | 'create_time' | 'update_time'>
+
+    /** 门诊病历列表搜索参数 */
+    interface SearchParams extends Common.PaginatingSearchParams {
+      /** 患者姓名 */
+      customer_name?: string
+      /** 联系电话 */
+      telephone?: string
+      /** 结算类型 */
+      trade_type?: TradeType
+      /** 医师ID */
+      doctor_id?: number
+      /** 开始时间 */
+      start_time?: string
+      /** 结束时间 */
+      end_time?: string
+    }
+
+    /** 门诊病历列表响应 */
+    interface ListResponse extends Common.PaginatingParams {
+      /** 记录列表 */
+      records: Info[]
     }
   }
 }
