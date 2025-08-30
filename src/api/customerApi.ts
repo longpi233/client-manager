@@ -12,6 +12,7 @@ export const getCustomerList = (
 
 /** 创建散客记录 */
 export const createCustomer = (customer: any): Promise<Api.Http.BaseResponse<any>> => {
+  console.log('customerApi: 准备调用 create_customer 命令，参数:', customer)
   return invoke('create_customer', { customer })
 }
 

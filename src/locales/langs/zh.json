@@ -224,7 +224,8 @@
     "data": {
       "title": "数据管理",
       "dataInquiry": "资料查询",
-      "outpatientLog": "门诊日志"
+      "outpatientLog": "门诊日志",
+      "dataManagement": "数据管理"
     },
     "result": {
       "title": "结果页面",

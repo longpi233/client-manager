@@ -102,6 +102,7 @@
         <!-- 操作列 -->
         <template #operation="{ row }">
           <div class="operation-buttons">
+            <ArtButtonTable type="edit" :row="row" @click="handleEdit(row)" />
             <ArtButtonTable type="delete" :row="row" @click="handleDelete(row)" />
           </div>
         </template>
@@ -129,6 +130,53 @@
         </template>
       </ArtTable>
     </ElCard>
+
+    <!-- 编辑诊疗项目对话框 -->
+    <ElDialog
+      v-model="editDialogVisible"
+      title="编辑诊疗项目"
+      width="500px"
+      :before-close="handleEditDialogClose"
+    >
+      <ElForm
+        ref="editFormRef"
+        :model="editForm"
+        :rules="editFormRules"
+        label-width="100px"
+        @submit.prevent
+      >
+        <ElFormItem label="项目名称" prop="name">
+          <ElInput v-model="editForm.name" placeholder="请输入项目名称" clearable />
+        </ElFormItem>
+        <ElFormItem label="项目描述" prop="description">
+          <ElInput
+            v-model="editForm.description"
+            type="textarea"
+            :rows="3"
+            placeholder="请输入项目描述"
+            clearable
+          />
+        </ElFormItem>
+        <ElFormItem label="单价（元）" prop="price">
+          <ElInputNumber
+            v-model="editForm.price"
+            :min="0"
+            :precision="2"
+            :step="1"
+            style="width: 100%"
+          />
+        </ElFormItem>
+      </ElForm>
+
+      <template #footer>
+        <div class="dialog-footer">
+          <ElButton @click="handleEditDialogClose">取消</ElButton>
+          <ElButton type="primary" @click="handleEditConfirm" :loading="editFormLoading">
+            确定
+          </ElButton>
+        </div>
+      </template>
+    </ElDialog>
   </div>
 </template>
 
@@ -140,6 +188,8 @@
   import * as healingApi from '@/api/healingApi'
   import { ACCOUNT_TABLE_DATA } from '@/mock/temp/formData'
   import type { SearchFormItem } from '@/types'
+  import type { FormInstance, FormRules } from 'element-plus'
+  import { convertYuanToCents, convertCentsToYuan } from '@/utils/dataprocess/format'
 
   defineOptions({ name: 'AdvancedTableDemo' })
 
@@ -156,10 +206,34 @@
     size: 20,
     name: '',
     phone: '',
-    status: '',
     department: '',
     dateRange: undefined
   })
+
+  // 编辑相关状态
+  const editDialogVisible = ref(false)
+  const editFormLoading = ref(false)
+  const editFormRef = ref<FormInstance>()
+  const currentEditingItem = ref<Api.Healing.Item | null>(null)
+
+  // 编辑表单数据
+  const editForm = ref({
+    name: '',
+    description: '',
+    price: 0
+  })
+
+  // 表单验证规则
+  const editFormRules: FormRules = {
+    name: [
+      { required: true, message: '请输入项目名称', trigger: 'blur' },
+      { min: 1, max: 50, message: '名称长度在 1 到 50 个字符', trigger: 'blur' }
+    ],
+    price: [
+      { required: true, message: '请输入单价', trigger: 'blur' },
+      { type: 'number', min: 0, message: '单价不能小于0', trigger: 'blur' }
+    ]
+  }
 
   // 缓存键信息
 
@@ -196,7 +270,7 @@
       label: '治疗项目',
       type: 'input',
       config: {
-        placeholder: '请输入治疗项目名称（支持拼音搜索）',
+        placeholder: '请输入治疗项目名称',
         clearable: true
       }
     }
@@ -270,12 +344,12 @@
           label: '单价（元）',
           sortable: true,
           width: 120,
-          formatter: (row) => `¥${row.price}`
+          formatter: (row) => `¥${convertCentsToYuan(row.price).toFixed(2)}` // 将分转换为元显示
         },
         {
           prop: 'operation',
           label: '操作',
-          width: 80,
+          width: 120,
           useSlot: true,
           fixed: 'right'
         }
@@ -428,13 +502,18 @@
   // CRUD 操作
   const handleAdd = async () => {
     try {
+      // 检查是否已有"新增康复项目"项目
+      const existingNewItem = tableData.value.find((item) => item.name === '新增康复项目')
+      if (existingNewItem) {
+        ElMessage.warning('已存在"新增康复项目"项目，请先编辑或删除现有项目')
+        return
+      }
+
       // 创建新的康复项目，只需要名称和价格
       const newItem: Api.Healing.CreateParams = {
         name: '新增康复项目',
         description: '',
-        price: 100,
-        category: '理疗',
-        status: '1'
+        price: convertYuanToCents(1) // 默认1元，转换为分
       }
 
       const response = await healingApi.createHealingItem(newItem)
@@ -444,9 +523,67 @@
       setTimeout(() => {
         refreshAfterCreate()
       }, 1000)
-    } catch (error) {
-      ElMessage.error('新增康复项目失败')
+    } catch (error: any) {
+      ElMessage.error(error.message || '新增康复项目失败')
       console.error('新增失败:', error)
+    }
+  }
+
+  const handleEdit = (row: Api.Healing.Item) => {
+    currentEditingItem.value = row
+    editForm.value = {
+      name: row.name,
+      description: row.description || '',
+      price: convertCentsToYuan(row.price) // 将分转换为元显示
+    }
+    editDialogVisible.value = true
+  }
+
+  const handleEditDialogClose = () => {
+    editDialogVisible.value = false
+    editForm.value = {
+      name: '',
+      description: '',
+      price: 0
+    }
+    currentEditingItem.value = null
+    editFormRef.value?.clearValidate()
+  }
+
+  const handleEditConfirm = async () => {
+    if (!editFormRef.value) return
+
+    try {
+      const valid = await editFormRef.value.validate()
+      if (!valid) return
+
+      if (!currentEditingItem.value?.id) {
+        ElMessage.error('无效的项目ID')
+        return
+      }
+
+      editFormLoading.value = true
+
+      const updateParams: Api.Healing.UpdateParams = {
+        id: currentEditingItem.value.id,
+        name: editForm.value.name,
+        description: editForm.value.description,
+        price: convertYuanToCents(editForm.value.price) // 将元转换为分
+      }
+
+      const response = await healingApi.updateHealingItem(updateParams)
+      ElMessage.success(response.msg || '更新成功')
+
+      handleEditDialogClose()
+
+      setTimeout(() => {
+        refreshAfterCreate() // 刷新表格数据
+      }, 1000)
+    } catch (error: any) {
+      ElMessage.error(error.message || '更新失败')
+      console.error('更新失败:', error)
+    } finally {
+      editFormLoading.value = false
     }
   }
 

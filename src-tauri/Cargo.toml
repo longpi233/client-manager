@@ -25,3 +25,12 @@ tauri = { version = "2.7.0", features = [] }
 tauri-plugin-log = "2"
 chrono = { version = "0.4", features = ["serde"] }
 pinyin = "0.10"
+rusqlite = { version = "0.32", features = ["bundled", "chrono"] }
+tokio = { version = "1.0", features = ["full"] }
+uuid = { version = "1.0", features = ["v4"] }
+dirs = "5.0"
+
+[features]
+default = ["sqlite-storage"]
+sqlite-storage = []
+memory-storage = []

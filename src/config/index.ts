@@ -11,7 +11,7 @@ import { headerBarConfig } from './headerBar'
 const appConfig: SystemConfig = {
   // 系统信息
   systemInfo: {
-    name: 'Art Design Pro' // 系统名称
+    name: '健康诊所管理系统' // 系统名称
   },
   // Element Plus 主题
   elementPlusTheme: {

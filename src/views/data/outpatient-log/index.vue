@@ -110,6 +110,15 @@
             <ElIcon><Refresh /></ElIcon>
             重置
           </ElButton>
+          <ElButton
+            type="danger"
+            @click="handleBatchDelete"
+            :disabled="selectedItems.length === 0"
+            :loading="batchDeleting"
+          >
+            <ElIcon><Delete /></ElIcon>
+            批量删除 ({{ selectedItems.length }})
+          </ElButton>
           <ArtExcelExport
             :data="
               allSearchResults.map((item) => ({
@@ -135,6 +144,104 @@
       </div>
     </ElCard>
 
+    <!-- 查询结果 -->
+    <ElCard class="result-card" shadow="never">
+      <template #header>
+        <div class="card-header">
+          <h4>门诊日志</h4>
+          <div class="result-info">
+            <ElTag v-if="loading" type="warning">查询中...</ElTag>
+            <ElTag v-else-if="hasError" type="danger">查询失败</ElTag>
+            <ElTag v-else type="success">找到 {{ tableData.length }} 条记录</ElTag>
+          </div>
+        </div>
+      </template>
+
+      <!-- 门诊日志表格 -->
+      <ElTable
+        ref="tableRef"
+        :data="tableData"
+        :loading="loading"
+        stripe
+        border
+        style="width: 100%"
+        :default-sort="{ prop: 'time_of_visit', order: 'descending' }"
+        @sort-change="handleSortChange"
+        @selection-change="handleSelectionChange"
+      >
+        <ElTableColumn type="selection" width="50" />
+        <ElTableColumn type="index" label="序号" width="60" />
+        <ElTableColumn
+          prop="time_of_visit"
+          label="时间"
+          width="160"
+          sortable="custom"
+          :sort-orders="['descending', 'ascending']"
+        >
+          <template #default="{ row }">
+            {{ formatDateTime(row.time_of_visit) }}
+          </template>
+        </ElTableColumn>
+        <ElTableColumn prop="customer_name" label="患者姓名" width="120" />
+        <ElTableColumn prop="trade_type" label="结算类别" width="100">
+          <template #default="{ row }">
+            <ElTag :type="getTradeTypeTagType(row.trade_type)">
+              {{ getTradeTypeName(row.trade_type) }}
+            </ElTag>
+          </template>
+        </ElTableColumn>
+        <ElTableColumn prop="data_type" label="数据类型" width="100">
+          <template #default="{ row }">
+            <ElTag :type="getDataTypeTagType(row.data_type)">
+              {{ getDataTypeName(row.data_type) }}
+            </ElTag>
+          </template>
+        </ElTableColumn>
+        <ElTableColumn prop="diagnosis" label="诊断" min-width="150" show-overflow-tooltip />
+        <ElTableColumn
+          prop="treatment_items"
+          label="治疗项目"
+          min-width="200"
+          show-overflow-tooltip
+        >
+          <template #default="{ row }">
+            <span v-if="row.treatment_items_summary">
+              {{ row.treatment_items_summary }}
+            </span>
+            <span v-else class="text-placeholder">-</span>
+          </template>
+        </ElTableColumn>
+        <ElTableColumn prop="amount" label="结算金额" width="120" align="right">
+          <template #default="{ row }">
+            <span v-if="row.amount" class="amount-text">
+              {{ formatAmountFromCents(row.amount) }}
+            </span>
+            <span v-else class="text-placeholder">-</span>
+          </template>
+        </ElTableColumn>
+        <ElTableColumn label="操作" width="180" fixed="right">
+          <template #default="{ row }">
+            <ElButton type="primary" size="small" @click="handleViewDetail(row)">
+              查看详情
+            </ElButton>
+            <ElButton type="danger" size="small" @click="handleDeleteItem(row)"> 删除 </ElButton>
+          </template>
+        </ElTableColumn>
+      </ElTable>
+
+      <!-- 分页 -->
+      <div class="pagination-wrapper">
+        <ElPagination
+          v-model:current-page="pagination.current"
+          v-model:page-size="pagination.size"
+          :total="pagination.total"
+          :page-sizes="[10, 20, 50, 100]"
+          layout="total, sizes, prev, pager, next, jumper"
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+        />
+      </div>
+    </ElCard>
     <!-- 统计信息 -->
     <ElCard class="stats-card" shadow="never" v-if="hasData">
       <template #header>
@@ -175,7 +282,7 @@
       <ElRow :gutter="24" style="margin-top: 16px">
         <ElCol :span="6">
           <div class="stat-item">
-            <div class="stat-value amount">¥{{ statistics.totalAmount.toFixed(2) }}</div>
+            <div class="stat-value amount">{{ formatAmountFromCents(statistics.totalAmount) }}</div>
             <div class="stat-label">总金额</div>
           </div>
         </ElCol>
@@ -264,7 +371,7 @@
             <h5>结算类型营业额占比</h5>
             <ArtRingChart
               :data="tradeTypeChartData"
-              :colors="['#67C23A', '#F56C6C', '#E6A23C', '#909399']"
+              :colors="['#67C23A', '#F56C6C', '#E6A23C']"
               height="20rem"
               :show-tooltip="true"
               :show-legend="true"
@@ -276,99 +383,6 @@
           </div>
         </ElCol>
       </ElRow>
-    </ElCard>
-
-    <!-- 查询结果 -->
-    <ElCard class="result-card" shadow="never">
-      <template #header>
-        <div class="card-header">
-          <h4>门诊日志</h4>
-          <div class="result-info">
-            <ElTag v-if="loading" type="warning">查询中...</ElTag>
-            <ElTag v-else-if="hasError" type="danger">查询失败</ElTag>
-            <ElTag v-else type="success">找到 {{ tableData.length }} 条记录</ElTag>
-          </div>
-        </div>
-      </template>
-
-      <!-- 门诊日志表格 -->
-      <ElTable
-        :data="tableData"
-        :loading="loading"
-        stripe
-        border
-        style="width: 100%"
-        :default-sort="{ prop: 'time_of_visit', order: 'descending' }"
-        @sort-change="handleSortChange"
-      >
-        <ElTableColumn type="index" label="序号" width="60" />
-        <ElTableColumn
-          prop="time_of_visit"
-          label="时间"
-          width="160"
-          sortable="custom"
-          :sort-orders="['descending', 'ascending']"
-        >
-          <template #default="{ row }">
-            {{ formatDateTime(row.time_of_visit) }}
-          </template>
-        </ElTableColumn>
-        <ElTableColumn prop="customer_name" label="患者姓名" width="120" />
-        <ElTableColumn prop="trade_type" label="结算类别" width="100">
-          <template #default="{ row }">
-            <ElTag :type="getTradeTypeTagType(row.trade_type)">
-              {{ getTradeTypeName(row.trade_type) }}
-            </ElTag>
-          </template>
-        </ElTableColumn>
-        <ElTableColumn prop="data_type" label="数据类型" width="100">
-          <template #default="{ row }">
-            <ElTag :type="getDataTypeTagType(row.data_type)">
-              {{ getDataTypeName(row.data_type) }}
-            </ElTag>
-          </template>
-        </ElTableColumn>
-        <ElTableColumn prop="diagnosis" label="诊断" min-width="150" show-overflow-tooltip />
-        <ElTableColumn
-          prop="treatment_items"
-          label="治疗项目"
-          min-width="200"
-          show-overflow-tooltip
-        >
-          <template #default="{ row }">
-            <span v-if="row.treatment_items_summary">
-              {{ row.treatment_items_summary }}
-            </span>
-            <span v-else class="text-placeholder">-</span>
-          </template>
-        </ElTableColumn>
-        <ElTableColumn prop="amount" label="结算金额" width="120" align="right">
-          <template #default="{ row }">
-            <span v-if="row.amount" class="amount-text"> ¥{{ row.amount.toFixed(2) }} </span>
-            <span v-else class="text-placeholder">-</span>
-          </template>
-        </ElTableColumn>
-        <ElTableColumn label="操作" width="120" fixed="right">
-          <template #default="{ row }">
-            <ElButton type="primary" size="small" @click="handleViewDetail(row)">
-              查看详情
-            </ElButton>
-          </template>
-        </ElTableColumn>
-      </ElTable>
-
-      <!-- 分页 -->
-      <div class="pagination-wrapper">
-        <ElPagination
-          v-model:current-page="pagination.current"
-          v-model:page-size="pagination.size"
-          :total="pagination.total"
-          :page-sizes="[10, 20, 50, 100]"
-          layout="total, sizes, prev, pager, next, jumper"
-          @size-change="handleSizeChange"
-          @current-change="handleCurrentChange"
-        />
-      </div>
     </ElCard>
 
     <!-- 详情弹窗 -->
@@ -413,11 +427,13 @@
             <ElTableColumn prop="treatment_item" label="治疗项目" min-width="150" />
             <ElTableColumn prop="count" label="数量/次数" width="100" align="center" />
             <ElTableColumn prop="unit_price" label="单价(元)" width="120" align="right">
-              <template #default="{ row }">¥{{ row.unit_price || 0 }}</template>
+              <template #default="{ row }">{{
+                formatAmountFromCents(row.unit_price || 0)
+              }}</template>
             </ElTableColumn>
             <ElTableColumn prop="total_price" label="小计(元)" width="120" align="right">
               <template #default="{ row }">
-                <span class="amount-text">¥{{ row.total_price || 0 }}</span>
+                <span class="amount-text">{{ formatAmountFromCents(row.total_price || 0) }}</span>
               </template>
             </ElTableColumn>
           </ElTable>
@@ -438,21 +454,27 @@
             <ElTableColumn prop="grams" label="克数" width="100">
               <template #default="{ row }">{{ row.grams }}g</template>
             </ElTableColumn>
-            <ElTableColumn prop="unit_price" label="单价(元/g)" width="120" />
+            <ElTableColumn prop="unit_price" label="单价(元/g)" width="120">
+              <template #default="{ row }">
+                {{ formatAmountFromCents(row.unit_price || 0) }}
+              </template>
+            </ElTableColumn>
             <ElTableColumn prop="total_price" label="金额(元)" width="100">
               <template #default="{ row }">
-                ¥{{ (row.grams * row.unit_price).toFixed(2) }}
+                {{ formatAmountFromCents((row.grams || 0) * (row.unit_price || 0)) }}
               </template>
             </ElTableColumn>
           </ElTable>
 
           <ElDescriptions title="处方信息" :column="2" border style="margin-top: 20px">
             <ElDescriptionsItem label="付数">{{ selectedItem.doses }}付</ElDescriptionsItem>
-            <ElDescriptionsItem label="单付金额"
-              >¥{{ selectedItem.single_dose_amount }}</ElDescriptionsItem
-            >
+            <ElDescriptionsItem label="单付金额">{{
+              formatAmountFromCents(selectedItem.single_dose_amount || 0)
+            }}</ElDescriptionsItem>
             <ElDescriptionsItem label="总金额" :span="2">
-              <span class="amount-text">¥{{ selectedItem.total_amount }}</span>
+              <span class="amount-text">{{
+                formatAmountFromCents(selectedItem.total_amount || 0)
+              }}</span>
             </ElDescriptionsItem>
           </ElDescriptions>
         </div>
@@ -488,7 +510,23 @@
 
       <template #footer>
         <ElButton @click="detailVisible = false">关闭</ElButton>
-        <ElButton type="primary" @click="handlePrint">打印</ElButton>
+
+        <!-- 散客登记：暂不支持打印 -->
+        <template v-if="selectedItem && selectedItem.data_type === 'customer'">
+          <ElButton type="info" disabled>散客登记暂不支持打印</ElButton>
+        </template>
+
+        <!-- 门诊病历：支持打印病历和费用清单 -->
+        <template v-if="selectedItem && selectedItem.data_type === 'medical'">
+          <ElButton type="success" @click="handlePrintMedicalRecord">生成门诊病历</ElButton>
+          <ElButton type="warning" @click="handlePrintMedicalFeeList">生成费用清单</ElButton>
+        </template>
+
+        <!-- 中药处方：支持打印处方和费用清单 -->
+        <template v-if="selectedItem && selectedItem.data_type === 'prescription'">
+          <ElButton type="success" @click="handlePrintPrescription">生成中药处方</ElButton>
+          <ElButton type="warning" @click="handlePrintPrescriptionFeeList">生成费用清单</ElButton>
+        </template>
       </template>
     </ElDialog>
   </div>
@@ -496,9 +534,14 @@
 
 <script setup lang="ts">
   import { ref, reactive, computed, onMounted } from 'vue'
-  import { ElMessage } from 'element-plus'
-  import { Search, Refresh, Download } from '@element-plus/icons-vue'
-  import { getOutpatientLogList, type OutpatientLogItem } from '@/api/outpatientLogApi'
+  import { ElMessage, ElMessageBox } from 'element-plus'
+  import { Search, Refresh, Download, Delete } from '@element-plus/icons-vue'
+  import {
+    getOutpatientLogList,
+    deleteOutpatientLogItem,
+    deleteOutpatientLogItemsBatch,
+    type OutpatientLogItem
+  } from '@/api/outpatientLogApi'
   import { getInstitutionInfo } from '@/api/institutionApi'
   import ArtLineChart from '@/components/core/charts/art-line-chart/index.vue'
   import ArtRingChart from '@/components/core/charts/art-ring-chart/index.vue'
@@ -506,13 +549,21 @@
   import {
     formatDateTime,
     formatGender,
-    formatAmount,
+    formatAmountFromCents,
     getTradeTypeName,
     getDataTypeName,
     getTradeTypeTagType,
     getDataTypeTagType,
     generateExportFilename
   } from '@/utils/dataprocess/medicalFormatter'
+  import {
+    printMedicalRecord,
+    printFeeList,
+    printPrescription,
+    type MedicalRecordData,
+    type FeeListData,
+    type PrescriptionData
+  } from '@/utils/print'
 
   defineOptions({ name: 'OutpatientLog' })
 
@@ -550,6 +601,11 @@
   const detailVisible = ref(false)
   const selectedItem = ref<OutpatientLogItem | null>(null)
 
+  // 选择和删除相关
+  const selectedItems = ref<OutpatientLogItem[]>([])
+  const batchDeleting = ref(false)
+  const tableRef = ref()
+
   // 统计信息
   const statistics = computed(() => {
     const stats = {
@@ -573,10 +629,11 @@
       // 统计金额
       if (item.amount) stats.totalAmount += item.amount
 
-      // 统计结算类型
-      if (item.trade_type === '1') stats.cashCount++
-      else if (item.trade_type === '2') stats.provincialInsuranceCount++
-      else if (item.trade_type === '3') stats.wuhanInsuranceCount++
+      // 统计结算类型（使用标准化函数）
+      const normalizedTradeType = normalizeTradeType(item.trade_type)
+      if (normalizedTradeType === '1') stats.cashCount++
+      else if (normalizedTradeType === '2') stats.provincialInsuranceCount++
+      else if (normalizedTradeType === '3') stats.wuhanInsuranceCount++
 
       // 统计治疗项目数
       if (item.treatment_items) stats.treatmentItemsCount += item.treatment_items.length
@@ -604,7 +661,8 @@
 
     // 转换为图表数据格式
     const sortedDates = Array.from(dailyRevenue.keys()).sort()
-    const data = sortedDates.map((date) => dailyRevenue.get(date) || 0)
+    // 将分转换为元用于图表显示
+    const data = sortedDates.map((date) => convertToYuan(dailyRevenue.get(date) || 0))
 
     // 优化 x 轴标签显示，跨年时显示年份
     const xAxisData = sortedDates.map((date) => {
@@ -641,44 +699,59 @@
       .reduce((sum, item) => sum + (item.amount || 0), 0)
 
     return [
-      { name: '散客登记', value: customerAmount },
-      { name: '门诊病历', value: medicalAmount },
-      { name: '中药处方', value: prescriptionAmount }
+      { name: '散客登记', value: convertToYuan(customerAmount) },
+      { name: '门诊病历', value: convertToYuan(medicalAmount) },
+      { name: '中药处方', value: convertToYuan(prescriptionAmount) }
     ].filter((item) => item.value > 0)
   })
+
+  // 标准化结算类型函数
+  const normalizeTradeType = (tradeType: string): string => {
+    if (!tradeType) return ''
+
+    // 统一转换为数字格式
+    const normalMap: Record<string, string> = {
+      '1': '1',
+      '2': '2',
+      '3': '3',
+      cash: '1',
+      Cash: '1',
+      insurance: '2',
+      ProvincialInsurance: '2',
+      WuHanInsurance: '3'
+    }
+
+    return normalMap[tradeType] || tradeType
+  }
 
   // 结算类型占比图数据（按营业额）
   const tradeTypeChartData = computed(() => {
     const cashAmount = allSearchResults.value
-      .filter((item) => item.trade_type === '1')
+      .filter((item) => normalizeTradeType(item.trade_type) === '1')
       .reduce((sum, item) => sum + (item.amount || 0), 0)
 
     const provincialInsuranceAmount = allSearchResults.value
-      .filter((item) => item.trade_type === '2')
+      .filter((item) => normalizeTradeType(item.trade_type) === '2')
       .reduce((sum, item) => sum + (item.amount || 0), 0)
 
     const wuhanInsuranceAmount = allSearchResults.value
-      .filter((item) => item.trade_type === '3')
+      .filter((item) => normalizeTradeType(item.trade_type) === '3')
       .reduce((sum, item) => sum + (item.amount || 0), 0)
 
-    const data = [
-      { name: '现金结算', value: cashAmount },
-      { name: '省直医保', value: provincialInsuranceAmount },
-      { name: '武汉医保', value: wuhanInsuranceAmount }
+    return [
+      { name: '现金结算', value: convertToYuan(cashAmount) },
+      { name: '省直医保', value: convertToYuan(provincialInsuranceAmount) },
+      { name: '武汉医保', value: convertToYuan(wuhanInsuranceAmount) }
     ].filter((item) => item.value > 0)
-
-    // 如果有其他结算类型，也添加进去
-    const totalKnownAmount = cashAmount + provincialInsuranceAmount + wuhanInsuranceAmount
-    const otherAmount = statistics.value.totalAmount - totalKnownAmount
-    if (otherAmount > 0) {
-      data.push({ name: '其他结算', value: otherAmount })
-    }
-
-    return data
   })
 
   // 计算属性
   const hasData = computed(() => tableData.value.length > 0)
+
+  // 简化的价格转换函数（分转元）
+  const convertToYuan = (cents: number): number => {
+    return Math.round((cents / 100) * 100) / 100
+  }
 
   // 导出列配置
   const exportColumns = computed(() => ({
@@ -712,7 +785,7 @@
     },
     amount: {
       title: '结算金额(元)',
-      formatter: (value: any) => formatAmount(value as number)
+      formatter: (value: any) => formatAmountFromCents(value as number)
     },
     note: {
       title: '备注'
@@ -817,6 +890,15 @@
       }
 
       // 调用统一的门诊日志API
+      console.log('门诊日志查询参数:', {
+        current: 1,
+        size: 10000,
+        start_date: startDate,
+        end_date: endDate,
+        data_type: (searchParams.dataType as 'customer' | 'medical' | 'prescription') || undefined,
+        trade_type: searchParams.tradeType || undefined
+      })
+
       const response = await getOutpatientLogList({
         current: 1, // 始终从第一页开始获取所有数据
         size: 10000, // 设置足够大的数量以获取所有数据
@@ -825,6 +907,8 @@
         data_type: (searchParams.dataType as 'customer' | 'medical' | 'prescription') || undefined,
         trade_type: searchParams.tradeType || undefined
       })
+
+      console.log('门诊日志API响应:', response)
 
       if (response.code === 200) {
         const { records, total } = response.data
@@ -944,9 +1028,242 @@
     selectedItem.value = null
   }
 
-  // 打印
-  const handlePrint = () => {
-    ElMessage.info('打印功能开发中...')
+  // 打印门诊病历
+  const handlePrintMedicalRecord = async () => {
+    if (!selectedItem.value) {
+      ElMessage.warning('请先选择要打印的记录')
+      return
+    }
+
+    try {
+      // 构建门诊病历打印数据
+      const medicalData: MedicalRecordData = {
+        customer_name: selectedItem.value.customer_name,
+        gender: selectedItem.value.gender,
+        age: selectedItem.value.age,
+        telephone: selectedItem.value.phone || selectedItem.value.telephone,
+        time_of_visit: selectedItem.value.time_of_visit,
+        trade_type: selectedItem.value.trade_type,
+        chief_complaint: selectedItem.value.chief_complaint || '',
+        illness_history: selectedItem.value.illness_history || '',
+        physical_examination: selectedItem.value.physical_examination || '',
+        past_history: selectedItem.value.past_history || '',
+        laboratory_examination: selectedItem.value.laboratory_examination || '',
+        diagnosis: selectedItem.value.diagnosis,
+        treatment_method: selectedItem.value.treatment_method || '',
+        note: selectedItem.value.note || '',
+        treatment_items: (selectedItem.value.treatment_items || []).map((item: any) => ({
+          treatment_item: item.treatment_item,
+          count: item.count,
+          unit_price: item.unit_price,
+          total_price: item.total_price
+        })),
+        doctor_name: selectedItem.value.doctor_name || '系统'
+      }
+
+      await printMedicalRecord(medicalData)
+      ElMessage.success('门诊病历打印成功')
+    } catch (error) {
+      console.error('打印门诊病历失败:', error)
+      ElMessage.error('打印失败，请重试')
+    }
+  }
+
+  // 打印门诊费用清单
+  const handlePrintMedicalFeeList = async () => {
+    if (!selectedItem.value) {
+      ElMessage.warning('请先选择要打印的记录')
+      return
+    }
+
+    try {
+      // 构建费用清单打印数据
+      const feeListData: FeeListData = {
+        customer_name: selectedItem.value.customer_name,
+        gender: selectedItem.value.gender,
+        age: selectedItem.value.age,
+        telephone: selectedItem.value.phone || selectedItem.value.telephone,
+        time_of_visit: selectedItem.value.time_of_visit,
+        trade_type: selectedItem.value.trade_type,
+        diagnosis: selectedItem.value.diagnosis,
+        note: selectedItem.value.note || '',
+        treatment_items: (selectedItem.value.treatment_items || []).map((item: any) => ({
+          treatment_item: item.treatment_item,
+          count: item.count,
+          unit_price: item.unit_price,
+          total_price: item.total_price
+        })),
+        total_amount: (selectedItem.value.treatment_items || []).reduce(
+          (sum: number, item: any) => sum + (item.total_price || 0),
+          0
+        ),
+        doctor_name: selectedItem.value.doctor_name || '系统'
+      }
+
+      await printFeeList(feeListData)
+      ElMessage.success('费用清单打印成功')
+    } catch (error) {
+      console.error('打印费用清单失败:', error)
+      ElMessage.error('打印失败，请重试')
+    }
+  }
+
+  // 打印中药处方
+  const handlePrintPrescription = async () => {
+    if (!selectedItem.value) {
+      ElMessage.warning('请先选择要打印的记录')
+      return
+    }
+
+    try {
+      // 构建中药处方打印数据
+      const prescriptionData: PrescriptionData = {
+        customer_name: selectedItem.value.customer_name,
+        gender: selectedItem.value.gender,
+        age: selectedItem.value.age,
+        telephone: selectedItem.value.phone || selectedItem.value.telephone,
+        time_of_visit: selectedItem.value.time_of_visit,
+        trade_type: selectedItem.value.trade_type,
+        diagnosis: selectedItem.value.diagnosis,
+        note: selectedItem.value.note || '',
+        prescription_items: (selectedItem.value.prescription || []).map((item: any) => ({
+          medicine_name: item.medicine_name,
+          grams: item.grams,
+          unit_price: item.unit_price,
+          total_price: item.grams * item.unit_price
+        })),
+        doses: selectedItem.value.doses || 1,
+        single_dose_amount: selectedItem.value.single_dose_amount || 0,
+        total_amount: selectedItem.value.total_amount || 0,
+        doctor_name: selectedItem.value.doctor_name || '系统'
+      }
+
+      await printPrescription(prescriptionData)
+      ElMessage.success('中药处方打印成功')
+    } catch (error) {
+      console.error('打印中药处方失败:', error)
+      ElMessage.error('打印失败，请重试')
+    }
+  }
+
+  // 打印中药处方费用清单
+  const handlePrintPrescriptionFeeList = async () => {
+    if (!selectedItem.value) {
+      ElMessage.warning('请先选择要打印的记录')
+      return
+    }
+
+    try {
+      // 构建费用清单打印数据（基于中药处方）
+      const feeListData: FeeListData = {
+        customer_name: selectedItem.value.customer_name,
+        gender: selectedItem.value.gender,
+        age: selectedItem.value.age,
+        telephone: selectedItem.value.phone || selectedItem.value.telephone,
+        time_of_visit: selectedItem.value.time_of_visit,
+        trade_type: selectedItem.value.trade_type,
+        diagnosis: selectedItem.value.diagnosis,
+        note: selectedItem.value.note || '',
+        treatment_items: (selectedItem.value.prescription || []).map((item: any) => {
+          const singleTotal = item.grams * item.unit_price
+          const doses = selectedItem.value?.doses || 1
+          return {
+            treatment_item: `${item.medicine_name} (${item.grams}g)`,
+            count: doses,
+            unit_price: singleTotal,
+            total_price: singleTotal * doses
+          }
+        }),
+        total_amount: selectedItem.value.total_amount || 0,
+        doctor_name: selectedItem.value.doctor_name || '系统'
+      }
+
+      await printFeeList(feeListData)
+      ElMessage.success('费用清单打印成功')
+    } catch (error) {
+      console.error('打印费用清单失败:', error)
+      ElMessage.error('打印失败，请重试')
+    }
+  }
+
+  // 选择变化处理
+  const handleSelectionChange = (selection: OutpatientLogItem[]) => {
+    selectedItems.value = selection
+  }
+
+  // 删除单个记录
+  const handleDeleteItem = async (row: OutpatientLogItem) => {
+    try {
+      await ElMessageBox.confirm(
+        `确定要删除患者 "${row.customer_name}" 的这条记录吗？删除后不可恢复。`,
+        '确认删除',
+        {
+          confirmButtonText: '确定删除',
+          cancelButtonText: '取消',
+          type: 'warning',
+          confirmButtonClass: 'el-button--danger'
+        }
+      )
+
+      const response = await deleteOutpatientLogItem(row.id)
+
+      if (response.code === 200) {
+        ElMessage.success('删除成功')
+        // 重新搜索数据
+        await handleSearch()
+      } else {
+        ElMessage.error(response.message || '删除失败')
+      }
+    } catch (error) {
+      if (error !== 'cancel') {
+        console.error('删除失败:', error)
+        ElMessage.error('删除失败，请重试')
+      }
+    }
+  }
+
+  // 批量删除
+  const handleBatchDelete = async () => {
+    if (selectedItems.value.length === 0) {
+      ElMessage.warning('请先选择要删除的记录')
+      return
+    }
+
+    try {
+      await ElMessageBox.confirm(
+        `确定要删除选中的 ${selectedItems.value.length} 条记录吗？删除后不可恢复。`,
+        '确认批量删除',
+        {
+          confirmButtonText: '确定删除',
+          cancelButtonText: '取消',
+          type: 'warning',
+          confirmButtonClass: 'el-button--danger'
+        }
+      )
+
+      batchDeleting.value = true
+
+      const ids = selectedItems.value.map((item) => item.id)
+      const response = await deleteOutpatientLogItemsBatch(ids)
+
+      if (response.code === 200) {
+        ElMessage.success(`批量删除成功，共删除 ${response.data} 条记录`)
+        // 清空选择
+        selectedItems.value = []
+        tableRef.value?.clearSelection()
+        // 重新搜索数据
+        await handleSearch()
+      } else {
+        ElMessage.error(response.message || '批量删除失败')
+      }
+    } catch (error) {
+      if (error !== 'cancel') {
+        console.error('批量删除失败:', error)
+        ElMessage.error('批量删除失败，请重试')
+      }
+    } finally {
+      batchDeleting.value = false
+    }
   }
 
   // 获取查询时间段文本

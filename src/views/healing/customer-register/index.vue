@@ -238,14 +238,15 @@
     ElSelect,
     ElOption,
     ElMessage,
+    ElMessageBox,
     FormInstance,
     ElIcon
   } from 'element-plus'
   import { Plus } from '@element-plus/icons-vue'
   import { ref, computed, onMounted } from 'vue'
-  import { createCustomer, createCustomerRegistration } from '@/api/customerApi'
+  import { createCustomerRecord } from '@/api/unifiedMedicalRecordApi'
   import { getHealingList } from '@/api/healingApi'
-  import { GENDER_OPTIONS, TRADE_TYPE_OPTIONS } from '@/config/customer'
+  import { GENDER_OPTIONS, TRADE_TYPE_OPTIONS } from '@/config/common'
 
   // 前端表单数据接口
   interface CustomerForm {
@@ -269,6 +270,7 @@
   // 状态管理
   const loading = ref(false)
   const healingItemsLoading = ref(false)
+  const isSubmitting = ref(false) // 防止重复提交
 
   // 康复项目数据
   const healingItems = ref<Api.Healing.Item[]>([])
@@ -337,8 +339,7 @@
       const res = await getHealingList({
         current: 1,
         size: 100,
-        name: '',
-        status: '1' // 只获取启用的项目
+        name: ''
       })
       if (res.code === 200) {
         healingItems.value = res.data.records
@@ -361,8 +362,7 @@
       const res = await getHealingList({
         current: 1,
         size: 100,
-        name: query,
-        status: '1'
+        name: query
       })
       if (res.code === 200) {
         filteredHealingItems.value = res.data.records
@@ -374,16 +374,20 @@
     }
   }
 
-  // 获取单价
+  // 获取单价（显示为元）
   const getUnitPrice = (index: number): string => {
     const itemName = form.value.treatment[index]?.treatmentItem
     if (!itemName) return '-'
 
     const item = healingItems.value.find((item) => item.name === itemName)
-    return item ? `¥${item.price}` : '-'
+    if (!item) return '-'
+
+    // item.price 假设以分为单位存储，转换为元显示
+    const priceInYuan = item.price / 100
+    return `¥${priceInYuan.toFixed(2)}`
   }
 
-  // 获取项目总价
+  // 获取项目总价（显示为元）
   const getItemTotalPrice = (index: number): string => {
     const itemName = form.value.treatment[index]?.treatmentItem
     const count = form.value.treatment[index]?.count || 0
@@ -393,21 +397,30 @@
     const item = healingItems.value.find((item) => item.name === itemName)
     if (!item) return '-'
 
-    return `¥${(item.price * count).toFixed(2)}`
+    // item.price 以分为单位，计算总价（分）
+    const totalPriceInCents = item.price * count
+    // 转换为元显示
+    const totalPriceInYuan = totalPriceInCents / 100
+    return `¥${totalPriceInYuan.toFixed(2)}`
   }
 
-  // 计算总金额
+  // 计算总金额（显示为元）
   const totalAmount = computed(() => {
-    let total = 0
+    let totalCents = 0
+
     form.value.treatment.forEach((treatmentItem) => {
       if (treatmentItem.treatmentItem && treatmentItem.count) {
         const item = healingItems.value.find((item) => item.name === treatmentItem.treatmentItem)
         if (item) {
-          total += item.price * treatmentItem.count
+          // item.price 以分为单位，乘以数量得到总价（分）
+          totalCents += item.price * treatmentItem.count
         }
       }
     })
-    return total.toFixed(2)
+
+    // 转换为元显示
+    const totalYuan = totalCents / 100
+    return totalYuan.toFixed(2)
   })
 
   // 处理治疗项目变更
@@ -472,6 +485,24 @@
   const submitForm = async () => {
     if (!formRef.value) return
 
+    // 防止重复提交
+    if (isSubmitting.value) {
+      // 二次确认
+      const confirmed = await ElMessageBox.confirm(
+        '检测到正在提交或刚刚提交过，是否确认重新提交？',
+        '重复提交确认',
+        {
+          confirmButtonText: '确认提交',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }
+      ).catch(() => false)
+
+      if (!confirmed) {
+        return
+      }
+    }
+
     const isValid = await formRef.value.validate().catch(() => false)
     if (!isValid) {
       ElMessage.warning('请检查表单填写是否正确')
@@ -489,38 +520,18 @@
 
     try {
       loading.value = true
+      isSubmitting.value = true
 
-      // 首先创建客户信息
-      const customerData = {
-        id: null,
-        name: form.value.customerName,
-        phone: form.value.telephone,
-        age: form.value.age,
+      // 使用新的统一医疗记录API
+      const unifiedRecordData = {
+        customer_name: form.value.customerName,
         gender: form.value.gender,
+        age: form.value.age,
+        telephone: form.value.telephone,
         time_of_visit: form.value.timeOfVisit,
         trade_type: form.value.tradeType,
         diagnosis: form.value.diagnosis,
         note: form.value.note,
-        status: '1',
-        create_time: null,
-        update_time: null
-      }
-
-      console.log('创建客户数据:', customerData)
-
-      const customerResponse = await createCustomer(customerData)
-      console.log('客户创建响应:', customerResponse)
-
-      if (customerResponse.code !== 200) {
-        ElMessage.error(customerResponse.msg || '创建客户信息失败')
-        return
-      }
-
-      const customerId = customerResponse.data.id || 1
-
-      // 然后创建散客登记记录
-      const registrationData = {
-        customer_id: customerId,
         treatment_items: form.value.treatment.map((item) => {
           const healingItem = healingItems.value.find((h) => h.name === item.treatmentItem)
           return {
@@ -529,31 +540,29 @@
             unit_price: healingItem?.price || 0,
             total_price: (healingItem?.price || 0) * item.count
           }
-        }),
-        total_amount: parseFloat(totalAmount.value),
-        paid_amount: parseFloat(totalAmount.value), // 默认为全额支付
-        payment_status: 'paid', // 已支付
-        registration_date: form.value.timeOfVisit,
-        notes: form.value.note || null,
-        status: '1' // 有效状态
+        })
       }
 
-      console.log('散客登记数据:', registrationData)
+      console.log('准备创建散客登记记录 (统一API):', unifiedRecordData)
 
-      const registrationResponse = await createCustomerRegistration(registrationData)
-      console.log('登记响应:', registrationResponse)
+      const response = await createCustomerRecord(unifiedRecordData)
+      console.log('散客登记响应 (统一API):', response)
 
-      if (registrationResponse.code === 200) {
+      if (response.code === 200) {
         ElMessage.success('散客登记成功！')
-        resetForm()
+        // 不重置表单，保持当前数据
       } else {
-        ElMessage.error(registrationResponse.msg || '登记失败')
+        ElMessage.error(response.msg || '登记失败')
       }
     } catch (error) {
       console.error('提交散客登记失败:', error)
       ElMessage.error('登记失败，请重试')
     } finally {
       loading.value = false
+      // 延迟重置提交状态，防止快速重复点击
+      setTimeout(() => {
+        isSubmitting.value = false
+      }, 2000)
     }
   }
 

@@ -5,7 +5,10 @@
 import {
   formatDateTime as baseFormatDateTime,
   formatGender as baseFormatGender,
-  formatAmount as baseFormatAmount
+  formatAmount as baseFormatAmount,
+  formatAmountFromCents,
+  convertYuanToCents,
+  convertCentsToYuan
 } from './format'
 import {
   GenderMap,
@@ -22,7 +25,10 @@ import {
 export {
   baseFormatDateTime as formatDateTime,
   baseFormatGender as formatGender,
-  baseFormatAmount as formatAmount
+  baseFormatAmount as formatAmount,
+  formatAmountFromCents,
+  convertYuanToCents,
+  convertCentsToYuan
 }
 
 /**
@@ -37,13 +43,46 @@ export function getGenderName(gender: string | number): string {
 }
 
 /**
+ * 标准化结算类型值
+ * @param type 原始结算类型值
+ * @returns 标准化后的结算类型值 ('1' | '2' | '3')
+ */
+function normalizeTradeType(type: string): string {
+  if (!type) return ''
+
+  const normalMap: Record<string, string> = {
+    '1': '1',
+    '2': '2',
+    '3': '3',
+    cash: '1',
+    Cash: '1',
+    insurance: '2',
+    ProvincialInsurance: '2',
+    WuHanInsurance: '3'
+  }
+
+  return normalMap[type] || type
+}
+
+/**
  * 获取结算类型名称
  * @param type 结算类型值
  * @returns 结算类型中文名称
  */
 export function getTradeTypeName(type: string): string {
   if (!type) return '-'
-  return TradeTypeMap[type as keyof typeof TradeTypeMap] || type
+
+  // 先标准化，再查询映射
+  const normalizedType = normalizeTradeType(type)
+
+  // 标准映射表
+  const standardMap: Record<string, string> = {
+    '1': '现金结算',
+    '2': '省直医保',
+    '3': '武汉医保'
+  }
+
+  return standardMap[normalizedType] || TradeTypeMap[type as keyof typeof TradeTypeMap] || type
 }
 
 /**

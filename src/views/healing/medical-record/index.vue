@@ -322,12 +322,11 @@
           <ElCol :span="16">
             <div class="form-actions">
               <ElButton @click="resetForm">重置</ElButton>
-              <ElButton type="success" @click="generateRecord" :loading="loading">
-                生成门诊病历
+              <ElButton type="primary" @click="submitRegistration" :loading="loading">
+                提交登记
               </ElButton>
-              <ElButton type="warning" @click="generateFeeList" :loading="loading">
-                生成费用清单
-              </ElButton>
+              <ElButton type="success" @click="printRecord" plain> 生成门诊病历 </ElButton>
+              <ElButton type="warning" @click="printFeeList" plain> 生成费用清单 </ElButton>
             </div>
           </ElCol>
         </ElRow>
@@ -347,6 +346,7 @@
     ElDatePicker,
     ElInput,
     ElMessage,
+    ElMessageBox,
     ElOption,
     ElSelect,
     ElIcon,
@@ -356,31 +356,14 @@
   import { Plus } from '@element-plus/icons-vue'
   import { getInstitutionInfo } from '@/api/institutionApi'
   import { getHealingList } from '@/api/healingApi'
-  import { createMedicalRecord } from '@/api/medicalRecordApi'
-
-  // 枚举定义
-  enum Gender {
-    Male = '1',
-    Female = '2'
-  }
-
-  enum TradeType {
-    Cash = '1',
-    ProvincialInsurance = '2',
-    WuHanInsurance = '3'
-  }
-
-  // 选项配置
-  const GENDER_OPTIONS = [
-    { label: '男', value: Gender.Male },
-    { label: '女', value: Gender.Female }
-  ]
-
-  const TRADE_TYPE_OPTIONS = [
-    { label: '现金结算', value: TradeType.Cash },
-    { label: '省直医保', value: TradeType.ProvincialInsurance },
-    { label: '武汉医保', value: TradeType.WuHanInsurance }
-  ]
+  import { createMedicalRecordLegacy } from '@/api/unifiedMedicalRecordApi'
+  import { GENDER_OPTIONS, TRADE_TYPE_OPTIONS } from '@/config/common'
+  import {
+    printMedicalRecord as printMedicalRecordTemplate,
+    printFeeList as printFeeListTemplate,
+    type MedicalRecordData,
+    type FeeListData
+  } from '@/utils/print'
 
   // 移除缺失的依赖项调用
   // const { initColors } = useTheme()
@@ -423,6 +406,7 @@
     timeOfVisit: [{ required: true, message: '请选择就诊时间', trigger: 'change' }],
     tradeType: [{ required: true, message: '请选择结算类型', trigger: 'change' }],
     chiefComplaint: [{ required: true, message: '请输入主诉', trigger: 'blur' }],
+    diagnosis: [{ required: true, message: '请输入诊断信息', trigger: 'blur' }],
     doctorId: [{ required: true, message: '请选择医师', trigger: 'change' }]
   }
 
@@ -432,6 +416,7 @@
   // 状态管理
   const loading = ref(false)
   const healingItemsLoading = ref(false)
+  const isSubmitting = ref(false) // 防止重复提交
 
   // 医师数据
   const doctorList = ref<{ id: number; name: string }[]>([])
@@ -474,8 +459,7 @@
       const res = await getHealingList({
         current: 1,
         size: 100,
-        name: '',
-        status: '1' // 只获取启用的项目
+        name: ''
       })
       if (res.code === 200) {
         healingItems.value = res.data.records
@@ -487,37 +471,27 @@
           {
             id: 1,
             name: '针灸',
-            price: 100,
-            category: '1' as Api.Healing.Category,
-            status: '1' as Api.Healing.Status
+            price: 100
           },
           {
             id: 2,
             name: '推拿',
-            price: 150,
-            category: '1' as Api.Healing.Category,
-            status: '1' as Api.Healing.Status
+            price: 150
           },
           {
             id: 3,
             name: '拔罐',
-            price: 80,
-            category: '1' as Api.Healing.Category,
-            status: '1' as Api.Healing.Status
+            price: 80
           },
           {
             id: 4,
             name: '艾灸',
-            price: 120,
-            category: '1' as Api.Healing.Category,
-            status: '1' as Api.Healing.Status
+            price: 120
           },
           {
             id: 5,
             name: '中药熏蒸',
-            price: 200,
-            category: '1' as Api.Healing.Category,
-            status: '1' as Api.Healing.Status
+            price: 200
           }
         ]
         healingItems.value = mockHealingItems
@@ -530,37 +504,27 @@
         {
           id: 1,
           name: '针灸',
-          price: 100,
-          category: '1' as Api.Healing.Category,
-          status: '1' as Api.Healing.Status
+          price: 100
         },
         {
           id: 2,
           name: '推拿',
-          price: 150,
-          category: '1' as Api.Healing.Category,
-          status: '1' as Api.Healing.Status
+          price: 150
         },
         {
           id: 3,
           name: '拔罐',
-          price: 80,
-          category: '1' as Api.Healing.Category,
-          status: '1' as Api.Healing.Status
+          price: 80
         },
         {
           id: 4,
           name: '艾灸',
-          price: 120,
-          category: '1' as Api.Healing.Category,
-          status: '1' as Api.Healing.Status
+          price: 120
         },
         {
           id: 5,
           name: '中药熏蒸',
-          price: 200,
-          category: '1' as Api.Healing.Category,
-          status: '1' as Api.Healing.Status
+          price: 200
         }
       ]
       healingItems.value = mockHealingItems
@@ -581,8 +545,7 @@
       const res = await getHealingList({
         current: 1,
         size: 100,
-        name: query,
-        status: '1'
+        name: query
       })
       if (res.code === 200) {
         filteredHealingItems.value = res.data.records
@@ -604,16 +567,20 @@
     calculateTotalPrice()
   }
 
-  // 获取单价
+  // 获取单价（显示为元）
   const getUnitPrice = (index: number): string => {
     const treatmentName = form.treatment[index]?.treatmentItem
     if (!treatmentName) return '¥0.00'
 
     const healingItem = healingItems.value.find((item) => item.name === treatmentName)
-    return healingItem ? `¥${healingItem.price}` : '¥0.00'
+    if (!healingItem) return '¥0.00'
+
+    // healingItem.price 假设是以分为单位存储，需要转换为元显示
+    const priceInYuan = healingItem.price / 100
+    return `¥${priceInYuan.toFixed(2)}`
   }
 
-  // 获取项目总价
+  // 获取项目总价（显示为元）
   const getItemTotalPrice = (index: number): string => {
     const treatmentName = form.treatment[index]?.treatmentItem
     const count = form.treatment[index]?.count || 0
@@ -621,20 +588,32 @@
     if (!treatmentName || !count) return '¥0.00'
 
     const healingItem = healingItems.value.find((item) => item.name === treatmentName)
-    const unitPrice = healingItem ? healingItem.price : 0
+    if (!healingItem) return '¥0.00'
 
-    return `¥${(unitPrice * count).toFixed(2)}`
+    // healingItem.price 以分为单位，计算总价（分）
+    const totalPriceInCents = healingItem.price * count
+    // 转换为元显示
+    const totalPriceInYuan = totalPriceInCents / 100
+    return `¥${totalPriceInYuan.toFixed(2)}`
   }
 
-  // 计算总金额
+  // 计算总金额（显示为元）
   const totalAmount = computed(() => {
-    return form.treatment
-      .reduce((total, item) => {
+    let totalCents = 0
+
+    form.treatment.forEach((item) => {
+      if (item.treatmentItem && item.count) {
         const healingItem = healingItems.value.find((hi) => hi.name === item.treatmentItem)
-        const unitPrice = healingItem ? healingItem.price : 0
-        return total + unitPrice * (item.count || 0)
-      }, 0)
-      .toFixed(2)
+        if (healingItem) {
+          // healingItem.price 以分为单位，乘以数量得到总价（分）
+          totalCents += healingItem.price * item.count
+        }
+      }
+    })
+
+    // 转换为元显示
+    const totalYuan = totalCents / 100
+    return totalYuan.toFixed(2)
   })
 
   // 计算总价
@@ -663,25 +642,44 @@
     form.timeOfVisit = new Date()
   }
 
-  // 生成门诊病历
-  const generateRecord = async () => {
+  // 提交登记
+  const submitRegistration = async () => {
     if (loading.value) return
+
+    // 防止重复提交
+    if (isSubmitting.value) {
+      // 二次确认
+      const confirmed = await ElMessageBox.confirm(
+        '检测到正在提交或刚刚提交过，是否确认重新提交？',
+        '重复提交确认',
+        {
+          confirmButtonText: '确认提交',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }
+      ).catch(() => false)
+
+      if (!confirmed) {
+        return
+      }
+    }
 
     try {
       loading.value = true
+      isSubmitting.value = true
       await formRef.value?.validate()
 
-      // 构建门诊病历数据
-      const medicalRecordData: Api.MedicalRecord.CreateParams = {
+      // 构建门诊病历数据 (统一API)
+      const medicalRecordData = {
         customer_name: form.customerName,
-        gender: form.gender as Api.MedicalRecord.Gender,
-        age: form.age!,
+        gender: form.gender,
+        age: form.age || 0,
         telephone: form.telephone,
         time_of_visit:
           typeof form.timeOfVisit === 'string'
             ? form.timeOfVisit
             : new Date(form.timeOfVisit).toISOString().slice(0, 19).replace('T', ' '),
-        trade_type: form.tradeType as Api.MedicalRecord.TradeType,
+        trade_type: form.tradeType,
         chief_complaint: form.chiefComplaint,
         illness_history: form.illnessHistory,
         physical_examination: form.physicalExamination,
@@ -690,7 +688,106 @@
         diagnosis: form.diagnosis,
         treatment_method: form.treatmentMethod,
         note: form.note,
-        treatment: form.treatment.map((item) => {
+        treatment_items: form.treatment.map((item) => {
+          const healingItem = healingItems.value.find((hi) => hi.name === item.treatmentItem)
+          const unitPrice = healingItem ? healingItem.price : 0
+          return {
+            treatment_item: item.treatmentItem,
+            count: item.count,
+            unit_price: unitPrice,
+            total_price: unitPrice * item.count
+          }
+        }),
+        doctor_id: parseInt(form.doctorId),
+        doctor_name: doctorList.value.find((doctor) => doctor.id === parseInt(form.doctorId))?.name
+      }
+
+      // 调用后端API创建门诊病历 (统一API)
+      const response = await createMedicalRecordLegacy(medicalRecordData)
+
+      if (response.code === 200) {
+        ElMessage.success('门诊病历登记成功')
+        // 不重置表单，保持当前数据
+        // resetForm() // 注释掉重置操作
+      } else {
+        ElMessage.error(response.msg || '门诊病历登记失败')
+      }
+    } catch (error) {
+      console.error('提交门诊病历登记失败:', error)
+      ElMessage.error('提交门诊病历登记失败')
+    } finally {
+      loading.value = false
+      // 延迟重置提交状态，防止快速重复点击
+      setTimeout(() => {
+        isSubmitting.value = false
+      }, 2000)
+    }
+  }
+
+  // 生成门诊病历（打印功能）
+  const printRecord = async () => {
+    try {
+      await formRef.value?.validate()
+
+      // 构建门诊病历打印数据
+      const printData: MedicalRecordData = {
+        customer_name: form.customerName,
+        gender: form.gender,
+        age: form.age || 0,
+        telephone: form.telephone,
+        time_of_visit:
+          typeof form.timeOfVisit === 'string'
+            ? form.timeOfVisit
+            : form.timeOfVisit.toISOString().slice(0, 19).replace('T', ' '),
+        trade_type: form.tradeType,
+        chief_complaint: form.chiefComplaint,
+        illness_history: form.illnessHistory,
+        physical_examination: form.physicalExamination,
+        past_history: form.pastHistory,
+        laboratory_examination: form.laboratoryExamination,
+        diagnosis: form.diagnosis,
+        treatment_method: form.treatmentMethod,
+        note: form.note,
+        treatment_items: form.treatment.map((item) => {
+          const healingItem = healingItems.value.find((hi) => hi.name === item.treatmentItem)
+          const unitPrice = healingItem ? healingItem.price : 0
+          return {
+            treatment_item: item.treatmentItem,
+            count: item.count,
+            unit_price: unitPrice,
+            total_price: unitPrice * item.count
+          }
+        }),
+        doctor_name: doctorList.value.find((doctor) => doctor.id === parseInt(form.doctorId))?.name
+      }
+
+      printMedicalRecordTemplate(printData)
+      ElMessage.success('门诊病历打印成功')
+    } catch (error) {
+      console.error('打印门诊病历失败:', error)
+      ElMessage.error('请先完善必填信息')
+    }
+  }
+
+  // 生成费用清单（打印功能）
+  const printFeeList = async () => {
+    try {
+      await formRef.value?.validate()
+
+      // 构建费用清单打印数据
+      const printData: FeeListData = {
+        customer_name: form.customerName,
+        gender: form.gender,
+        age: form.age || 0,
+        telephone: form.telephone,
+        time_of_visit:
+          typeof form.timeOfVisit === 'string'
+            ? form.timeOfVisit
+            : form.timeOfVisit.toISOString().slice(0, 19).replace('T', ' '),
+        trade_type: form.tradeType,
+        diagnosis: form.diagnosis,
+        note: form.note,
+        treatment_items: form.treatment.map((item) => {
           const healingItem = healingItems.value.find((hi) => hi.name === item.treatmentItem)
           const unitPrice = healingItem ? healingItem.price : 0
           return {
@@ -701,44 +798,14 @@
           }
         }),
         total_amount: parseFloat(totalAmount.value),
-        doctor_id: parseInt(form.doctorId)
+        doctor_name: doctorList.value.find((doctor) => doctor.id === parseInt(form.doctorId))?.name
       }
 
-      // 调用后端API创建门诊病历
-      const response = await createMedicalRecord(medicalRecordData)
-
-      if (response.code === 200) {
-        ElMessage.success('门诊病历生成成功')
-        // 重置表单
-        resetForm()
-      } else {
-        ElMessage.error(response.msg || '门诊病历生成失败')
-      }
+      printFeeListTemplate(printData)
+      ElMessage.success('费用清单打印成功')
     } catch (error) {
-      console.error('生成门诊病历失败:', error)
-      ElMessage.error('生成门诊病历失败')
-    } finally {
-      loading.value = false
-    }
-  }
-
-  // 生成费用清单
-  const generateFeeList = async () => {
-    if (loading.value) return
-
-    try {
-      loading.value = true
-      await formRef.value?.validate()
-
-      // 模拟调用后端API
-      console.log('费用清单数据:', { totalAmount: totalAmount.value, items: form.treatment })
-
-      ElMessage.success('费用清单生成成功')
-    } catch (error) {
-      console.error('生成费用清单失败:', error)
-      ElMessage.error('生成费用清单失败')
-    } finally {
-      loading.value = false
+      console.error('打印费用清单失败:', error)
+      ElMessage.error('请先完善必填信息')
     }
   }
 

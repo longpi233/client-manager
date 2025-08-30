@@ -33,6 +33,7 @@ export enum RoutesAlias {
   // 数据管理
   DataInquiry = '/data/data-inquiry', // 资料查询
   OutpatientLog = '/data/outpatient-log', // 门诊日志
+  DataManagement = '/data/data-management', // 数据管理
 
   // 系统管理
   User = '/system/user', // 账户

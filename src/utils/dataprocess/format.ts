@@ -60,14 +60,48 @@ export function formatGender(gender: string | number): string {
   return genderStr === '1' ? '男' : genderStr === '2' ? '女' : genderStr
 }
 
-// 格式化金额
+// 格式化金额（支持分转元）
 export function formatAmount(amount: number | string): string {
-  if (!amount || amount === 0) return '-'
+  if (!amount || amount === 0) return '¥0.00'
 
   const num = typeof amount === 'string' ? parseFloat(amount) : amount
-  if (isNaN(num)) return '-'
+  if (isNaN(num)) return '¥0.00'
 
   return `¥${num.toFixed(2)}`
+}
+
+// 格式化金额（从分转为元显示）
+export function formatAmountFromCents(cents: number | string): string {
+  if (!cents || cents === 0) return '¥0.00'
+
+  const centsNum = typeof cents === 'string' ? parseInt(cents) : cents
+  if (isNaN(centsNum)) return '¥0.00'
+
+  // 分转元：除以100
+  const yuan = centsNum / 100
+  return `¥${yuan.toFixed(2)}`
+}
+
+// 元转分（用于前端向后端发送数据）
+export function convertYuanToCents(yuan: number | string): number {
+  if (!yuan || yuan === 0) return 0
+
+  const yuanNum = typeof yuan === 'string' ? parseFloat(yuan) : yuan
+  if (isNaN(yuanNum)) return 0
+
+  // 元转分：乘以100并四舍五入
+  return Math.round(yuanNum * 100)
+}
+
+// 分转元（用于后端数据转为前端显示）
+export function convertCentsToYuan(cents: number | string): number {
+  if (!cents || cents === 0) return 0
+
+  const centsNum = typeof cents === 'string' ? parseInt(cents) : cents
+  if (isNaN(centsNum)) return 0
+
+  // 分转元：除以100
+  return centsNum / 100
 }
 
 // 格式化百分比

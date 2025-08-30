@@ -16,6 +16,26 @@ declare namespace Api {
       // 数据
       data: T
     }
+    //   /** 门诊病历类型 */
+    namespace MedicalRecord {
+      /** 性别枚举 */
+      type Gender = '1' | '2' // 1-男, 2-女
+
+      /** 结算类型枚举 */
+      type TradeType = '1' | '2' | '3' // 1-现金结算, 2-省直医保, 3-武汉医保
+
+      /** 治疗项目 */
+      interface TreatmentItem {
+        /** 治疗项目名称 */
+        treatment_item: string
+        /** 数量 */
+        count: number
+        /** 单价（以分为单位） */
+        unit_price?: number
+        /** 总价（以分为单位） */
+        total_price?: number
+      }
+    }
   }
 
   /** 通用类型 */
@@ -32,9 +52,6 @@ declare namespace Api {
 
     /** 通用搜索参数 */
     type PaginatingSearchParams = Pick<PaginatingParams, 'current' | 'size'>
-
-    /** 启用状态 */
-    type EnableStatus = '1' | '2'
   }
 
   /** 机构管理类型 */
@@ -49,8 +66,6 @@ declare namespace Api {
       title?: string
       /** 专业科室 */
       department?: string
-      /** 状态 */
-      status?: Common.EnableStatus
     }
 
     /** 机构信息 */
@@ -91,9 +106,9 @@ declare namespace Api {
       treatment_item: string
       /** 数量 */
       count: number
-      /** 单价 */
+      /** 单价（以分为单位） */
       unit_price?: number
-      /** 总价 */
+      /** 总价（以分为单位） */
       total_price?: number
     }
 
@@ -119,7 +134,7 @@ declare namespace Api {
       note?: string
       /** 治疗项目 */
       treatment: TreatmentItem[]
-      /** 总金额 */
+      /** 总金额（以分为单位） */
       total_amount: number
       /** 创建时间 */
       create_time?: string
@@ -207,12 +222,6 @@ declare namespace Api {
 
   /** 康复项目类型 */
   namespace Healing {
-    /** 康复项目状态枚举 */
-    type Status = '1' | '2' // 1: 启用, 2: 禁用
-
-    /** 康复项目类别枚举 */
-    type Category = '理疗' | '针灸' | '按摩' | '康复训练' | '中医调理'
-
     /** 康复项目基础信息 */
     interface Item {
       /** 项目ID */
@@ -221,12 +230,8 @@ declare namespace Api {
       name: string
       /** 项目描述 */
       description?: string
-      /** 项目价格 */
+      /** 项目价格（以分为单位） */
       price: number
-      /** 项目类别 */
-      category: Category
-      /** 项目状态 */
-      status: Status
       /** 创建时间 */
       create_time?: string
       /** 更新时间 */
@@ -237,10 +242,6 @@ declare namespace Api {
     interface SearchParams extends Common.PaginatingSearchParams {
       /** 项目名称（支持拼音搜索） */
       name?: string
-      /** 项目类别 */
-      category?: Category
-      /** 项目状态 */
-      status?: Status
     }
 
     /** 创建参数 */
@@ -249,12 +250,8 @@ declare namespace Api {
       name: string
       /** 项目描述 */
       description?: string
-      /** 项目价格 */
+      /** 项目价格（以分为单位） */
       price: number
-      /** 项目类别 */
-      category: Category
-      /** 项目状态 */
-      status: Status
     }
 
     /** 更新参数 */
@@ -268,25 +265,10 @@ declare namespace Api {
       /** 康复项目列表 */
       records: Item[]
     }
-
-    /** 康复项目统计信息 */
-    interface Statistics {
-      /** 总项目数 */
-      total: number
-      /** 启用项目数 */
-      enabled: number
-      /** 禁用项目数 */
-      disabled: number
-      /** 按类别统计 */
-      byCategory: Record<Category, number>
-    }
   }
 
   /** 中药管理类型 */
   namespace ChineseMedicine {
-    /** 中药状态枚举 */
-    type Status = '1' | '2' // 1: 启用, 2: 禁用
-
     /** 中药基础信息 */
     interface Item {
       /** 中药ID */
@@ -295,10 +277,8 @@ declare namespace Api {
       name: string
       /** 中药描述 */
       description?: string
-      /** 中药单价 */
+      /** 中药单价（以分为单位） */
       price: number
-      /** 中药状态 */
-      status: Status
       /** 创建时间 */
       create_time?: string
       /** 更新时间 */
@@ -309,8 +289,6 @@ declare namespace Api {
     interface SearchParams extends Common.PaginatingSearchParams {
       /** 中药名称（支持拼音搜索） */
       name?: string
-      /** 中药状态 */
-      status?: Status
     }
 
     /** 创建参数 */
@@ -319,10 +297,8 @@ declare namespace Api {
       name: string
       /** 中药描述 */
       description?: string
-      /** 中药单价 */
+      /** 中药单价（以分为单位） */
       price: number
-      /** 中药状态 */
-      status: Status
     }
 
     /** 更新参数 */
@@ -335,16 +311,6 @@ declare namespace Api {
     interface ListResponse extends Common.PaginatingParams {
       /** 中药列表 */
       records: Item[]
-    }
-
-    /** 中药统计信息 */
-    interface Statistics {
-      /** 总中药数 */
-      total: number
-      /** 启用中药数 */
-      enabled: number
-      /** 禁用中药数 */
-      disabled: number
     }
   }
 
@@ -402,7 +368,7 @@ declare namespace Api {
       note?: string
       /** 治疗项目 */
       treatment: TreatmentItem[]
-      /** 总金额 */
+      /** 总金额（以分为单位） */
       total_amount: number
       /** 医师ID */
       doctor_id: number

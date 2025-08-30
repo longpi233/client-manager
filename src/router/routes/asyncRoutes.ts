@@ -130,6 +130,15 @@ export const asyncRoutes: AppRouteRecord[] = [
           title: 'menus.data.outpatientLog',
           keepAlive: true
         }
+      },
+      {
+        name: 'DataManagement',
+        path: 'data-management',
+        component: RoutesAlias.DataManagement,
+        meta: {
+          title: 'menus.data.dataManagement',
+          keepAlive: true
+        }
       }
     ]
   }

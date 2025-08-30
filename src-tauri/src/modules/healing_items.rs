@@ -1,19 +1,29 @@
+use crate::modules::types::ApiResponse;
 use serde::{Deserialize, Serialize};
 use tauri::command;
-use std::collections::HashMap;
-use std::sync::LazyLock;
-use std::sync::Mutex;
-use crate::modules::types::ApiResponse;
+
+#[cfg(feature = "sqlite-storage")]
+use crate::modules::database::get_database;
+#[cfg(feature = "sqlite-storage")]
+use chrono::Utc;
+#[cfg(feature = "sqlite-storage")]
+use rusqlite::{params, Row};
+
+#[cfg(feature = "memory-storage")]
 use crate::modules::utils::contains_pinyin;
+#[cfg(feature = "memory-storage")]
+use std::collections::HashMap;
+#[cfg(feature = "memory-storage")]
+use std::sync::LazyLock;
+#[cfg(feature = "memory-storage")]
+use std::sync::Mutex;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HealingItem {
     pub id: Option<i32>,
     pub name: String,
     pub description: Option<String>,
-    pub price: f64,
-    pub category: String,
-    pub status: String,
+    pub price: i64,  // 价格（以分为单位）
     pub create_time: Option<String>,
     pub update_time: Option<String>,
 }
@@ -23,8 +33,6 @@ pub struct HealingSearchParams {
     pub current: i32,
     pub size: i32,
     pub name: Option<String>,
-    pub category: Option<String>,
-    pub status: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -35,219 +43,453 @@ pub struct HealingListResponse {
     pub total: i32,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct HealingStatistics {
-    pub total: i32,
-    pub enabled: i32,
-    pub disabled: i32,
-    pub by_category: HashMap<String, i32>,
-}
-
-// 模拟数据存储（实际项目中应该使用数据库）
+// 内存存储（用于测试模式）
+#[cfg(feature = "memory-storage")]
 static HEALING_ITEMS: LazyLock<Mutex<HashMap<i32, HealingItem>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
+
+#[cfg(feature = "memory-storage")]
 static NEXT_ID: LazyLock<Mutex<i32>> = LazyLock::new(|| Mutex::new(1));
+
+// SQLite 辅助函数
+#[cfg(feature = "sqlite-storage")]
+fn row_to_healing_item(row: &Row) -> rusqlite::Result<HealingItem> {
+    Ok(HealingItem {
+        id: Some(row.get("id")?),
+        name: row.get("name")?,
+        description: row.get("description")?,
+        price: row.get("unit_price")?,
+        create_time: Some(row.get("created_at")?),
+        update_time: Some(row.get("updated_at")?),
+    })
+}
 
 #[command]
 pub async fn get_healing_list(
     params: HealingSearchParams,
 ) -> Result<ApiResponse<HealingListResponse>, String> {
-    let items = HEALING_ITEMS.lock().unwrap();
+    #[cfg(feature = "sqlite-storage")]
+    {
+        println!("🔧 使用 SQLite 存储模式获取康养列表");
+        let db = get_database();
+        let conn = db.get_connection();
 
-    // 模拟搜索过滤，支持拼音查询
-    let mut filtered_items: Vec<HealingItem> = items
-        .values()
-        .filter(|item| {
-            if let Some(ref name) = params.name {
-                if !name.is_empty() && !contains_pinyin(&item.name, name) {
-                    return false;
-                }
+        let mut where_clauses = Vec::new();
+        let mut query_params = Vec::new();
+
+        if let Some(name) = &params.name {
+            if !name.is_empty() {
+                where_clauses.push("name LIKE ?");
+                query_params.push(format!("%{}%", name));
             }
-            if let Some(ref category) = params.category {
-                if !category.is_empty() && item.category != *category {
-                    return false;
-                }
-            }
-            if let Some(ref status) = params.status {
-                if !status.is_empty() && item.status != *status {
-                    return false;
-                }
-            }
-            true
+        }
+
+        let where_clause = if where_clauses.is_empty() {
+            String::new()
+        } else {
+            format!(" WHERE {}", where_clauses.join(" AND "))
+        };
+
+        // 获取总数
+        let count_query = format!("SELECT COUNT(*) FROM healing_items{}", where_clause);
+        let total: i32 = conn
+            .query_row(
+                &count_query,
+                rusqlite::params_from_iter(&query_params),
+                |row| row.get(0),
+            )
+            .map_err(|e| format!("查询总数失败: {}", e))?;
+
+        // 获取分页数据
+        let offset = (params.current - 1) * params.size;
+        let query = format!(
+            "SELECT * FROM healing_items{} ORDER BY created_at DESC LIMIT ? OFFSET ?",
+            where_clause
+        );
+
+        let mut stmt = conn
+            .prepare(&query)
+            .map_err(|e| format!("准备查询失败: {}", e))?;
+        let mut param_values = query_params;
+        param_values.push(params.size.to_string());
+        param_values.push(offset.to_string());
+
+        let healing_iter = stmt
+            .query_map(
+                rusqlite::params_from_iter(&param_values),
+                row_to_healing_item,
+            )
+            .map_err(|e| format!("执行查询失败: {}", e))?;
+
+        let mut records = Vec::new();
+        for item in healing_iter {
+            records.push(item.map_err(|e| format!("解析记录失败: {}", e))?);
+        }
+
+        Ok(ApiResponse {
+            code: 200,
+            msg: "查询成功".to_string(),
+            data: HealingListResponse {
+                records,
+                current: params.current,
+                size: params.size,
+                total,
+            },
         })
-        .cloned()
-        .collect();
+    }
 
-    // 排序
-    filtered_items.sort_by(|a, b| b.id.cmp(&a.id));
+    #[cfg(feature = "memory-storage")]
+    {
+        let items = HEALING_ITEMS.lock().unwrap();
+        let mut filtered_items: Vec<HealingItem> = items
+            .values()
+            .filter(|item| {
+                // 名称过滤
+                if let Some(name) = &params.name {
+                    if !name.is_empty() && !contains_pinyin(&item.name, name) {
+                        return false;
+                    }
+                }
 
-    let total = filtered_items.len() as i32;
-    let start = ((params.current - 1) * params.size) as usize;
-    let end = std::cmp::min(start + params.size as usize, filtered_items.len());
+                // 状态过滤
+                if let Some(status) = &params.status {
+                    if !status.is_empty() && item.status != *status {
+                        return false;
+                    }
+                }
 
-    let records = if start < filtered_items.len() {
-        filtered_items[start..end].to_vec()
-    } else {
-        Vec::new()
-    };
+                true
+            })
+            .cloned()
+            .collect();
 
-    let response = HealingListResponse {
-        records,
-        current: params.current,
-        size: params.size,
-        total,
-    };
+        // 按创建时间倒序排序
+        filtered_items.sort_by(|a, b| b.create_time.cmp(&a.create_time));
 
-    Ok(ApiResponse {
-        code: 200,
-        msg: "success".to_string(),
-        data: response,
-    })
+        let total = filtered_items.len() as i32;
+        let start = ((params.current - 1) * params.size) as usize;
+        let end = (start + params.size as usize).min(filtered_items.len());
+
+        let records = if start < filtered_items.len() {
+            filtered_items[start..end].to_vec()
+        } else {
+            Vec::new()
+        };
+
+        Ok(ApiResponse {
+            code: 200,
+            msg: "查询成功".to_string(),
+            data: HealingListResponse {
+                records,
+                current: params.current,
+                size: params.size,
+                total,
+            },
+        })
+    }
 }
 
 #[command]
 pub async fn create_healing_item(item: HealingItem) -> Result<ApiResponse<HealingItem>, String> {
-    let mut items = HEALING_ITEMS.lock().unwrap();
-    let mut next_id = NEXT_ID.lock().unwrap();
+    #[cfg(feature = "sqlite-storage")]
+    {
+        let db = get_database();
+        let conn = db.get_connection();
+        
+        // 检查是否已存在相同名称的康复项目
+        let check_result: Result<i32, rusqlite::Error> = conn.query_row(
+            "SELECT COUNT(*) FROM healing_items WHERE name = ?1",
+            params![item.name],
+            |row| row.get(0),
+        );
+        
+        match check_result {
+            Ok(count) => {
+                if count > 0 {
+                    return Err(format!("康复项目名称 '{}' 已存在，请使用其他名称", item.name));
+                }
+            }
+            Err(e) => {
+                return Err(format!("检查重复名称失败: {}", e));
+            }
+        }
+        
+        let now = Utc::now().format("%Y-%m-%d %H:%M:%S").to_string();
 
-    let mut new_item = item;
-    new_item.id = Some(*next_id);
-    new_item.create_time = Some(chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string());
-    new_item.update_time = Some(chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string());
+        let result = conn.execute(
+            "INSERT INTO healing_items (name, unit_price, description, created_at, updated_at) 
+             VALUES (?1, ?2, ?3, ?4, ?5)",
+            params![item.name, item.price, item.description, now, now],
+        );
 
-    items.insert(*next_id, new_item.clone());
-    *next_id += 1;
+        match result {
+            Ok(_) => {
+                let id = conn.last_insert_rowid() as i32;
+                let mut new_item = item;
+                new_item.id = Some(id);
+                new_item.create_time = Some(now.clone());
+                new_item.update_time = Some(now);
 
-    Ok(ApiResponse {
-        code: 200,
-        msg: "创建成功".to_string(),
-        data: new_item,
-    })
+                Ok(ApiResponse {
+                    code: 200,
+                    msg: "创建成功".to_string(),
+                    data: new_item,
+                })
+            }
+            Err(e) => Err(format!("创建失败: {}", e)),
+        }
+    }
+
+    #[cfg(feature = "memory-storage")]
+    {
+        let mut items = HEALING_ITEMS.lock().unwrap();
+        let mut next_id = NEXT_ID.lock().unwrap();
+
+        // 检查是否已存在相同名称的康复项目
+        for existing_item in items.values() {
+            if existing_item.name == item.name {
+                return Err(format!("康复项目名称 '{}' 已存在，请使用其他名称", item.name));
+            }
+        }
+
+        let mut new_item = item;
+        new_item.id = Some(*next_id);
+        new_item.create_time = Some(chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string());
+        new_item.update_time = Some(chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string());
+
+        items.insert(*next_id, new_item.clone());
+        *next_id += 1;
+
+        Ok(ApiResponse {
+            code: 200,
+            msg: "创建成功".to_string(),
+            data: new_item,
+        })
+    }
 }
 
 #[command]
 pub async fn update_healing_item(item: HealingItem) -> Result<ApiResponse<HealingItem>, String> {
-    let mut items = HEALING_ITEMS.lock().unwrap();
+    #[cfg(feature = "sqlite-storage")]
+    {
+        let db = get_database();
+        let conn = db.get_connection();
+        
+        if let Some(id) = item.id {
+            // 检查是否已存在相同名称的其他康复项目
+            let check_result: Result<i32, rusqlite::Error> = conn.query_row(
+                "SELECT COUNT(*) FROM healing_items WHERE name = ?1 AND id != ?2",
+                params![item.name, id],
+                |row| row.get(0),
+            );
+            
+            match check_result {
+                Ok(count) => {
+                    if count > 0 {
+                        return Err(format!("康复项目名称 '{}' 已存在，请使用其他名称", item.name));
+                    }
+                }
+                Err(e) => {
+                    return Err(format!("检查重复名称失败: {}", e));
+                }
+            }
+            
+            let now = Utc::now().format("%Y-%m-%d %H:%M:%S").to_string();
 
-    if let Some(id) = item.id {
-        if let Some(existing_item) = items.get_mut(&id) {
-            existing_item.name = item.name;
-            existing_item.description = item.description;
-            existing_item.price = item.price;
-            existing_item.category = item.category;
-            existing_item.status = item.status;
-            existing_item.update_time =
-                Some(chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string());
+            let result = conn.execute(
+                "UPDATE healing_items SET name = ?1, unit_price = ?2, 
+                 description = ?3, updated_at = ?4 WHERE id = ?5",
+                params![
+                    item.name,
+                    item.price,
+                    item.description,
+                    now,
+                    id
+                ],
+            );
 
+            match result {
+                Ok(updated) => {
+                    if updated > 0 {
+                        let mut updated_item = item;
+                        updated_item.update_time = Some(now);
+                        Ok(ApiResponse {
+                            code: 200,
+                            msg: "更新成功".to_string(),
+                            data: updated_item,
+                        })
+                    } else {
+                        Err("记录不存在".to_string())
+                    }
+                }
+                Err(e) => Err(format!("更新失败: {}", e)),
+            }
+        } else {
+            Err("ID不能为空".to_string())
+        }
+    }
+
+    #[cfg(feature = "memory-storage")]
+    {
+        let mut items = HEALING_ITEMS.lock().unwrap();
+
+        if let Some(id) = item.id {
+            // 检查是否已存在相同名称的其他康复项目
+            for (existing_id, existing_item) in items.iter() {
+                if existing_item.name == item.name && *existing_id != id {
+                    return Err(format!("康复项目名称 '{}' 已存在，请使用其他名称", item.name));
+                }
+            }
+            
+            if let Some(existing_item) = items.get_mut(&id) {
+                existing_item.name = item.name;
+                existing_item.description = item.description;
+                existing_item.price = item.price;
+                existing_item.status = item.status;
+                existing_item.update_time =
+                    Some(chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string());
+
+                Ok(ApiResponse {
+                    code: 200,
+                    msg: "更新成功".to_string(),
+                    data: existing_item.clone(),
+                })
+            } else {
+                Err("记录不存在".to_string())
+            }
+        } else {
+            Err("ID不能为空".to_string())
+        }
+    }
+}
+
+#[command]
+pub async fn delete_healing_item(id: i32) -> Result<ApiResponse<String>, String> {
+    #[cfg(feature = "sqlite-storage")]
+    {
+        let db = get_database();
+        let conn = db.get_connection();
+
+        let result = conn.execute("DELETE FROM healing_items WHERE id = ?1", params![id]);
+
+        match result {
+            Ok(deleted) => {
+                if deleted > 0 {
+                    Ok(ApiResponse {
+                        code: 200,
+                        msg: "删除成功".to_string(),
+                        data: "ok".to_string(),
+                    })
+                } else {
+                    Err("记录不存在".to_string())
+                }
+            }
+            Err(e) => Err(format!("删除失败: {}", e)),
+        }
+    }
+
+    #[cfg(feature = "memory-storage")]
+    {
+        let mut items = HEALING_ITEMS.lock().unwrap();
+
+        if items.remove(&id).is_some() {
             Ok(ApiResponse {
                 code: 200,
-                msg: "更新成功".to_string(),
-                data: existing_item.clone(),
+                msg: "删除成功".to_string(),
+                data: "ok".to_string(),
             })
         } else {
             Err("记录不存在".to_string())
         }
-    } else {
-        Err("无效的ID".to_string())
     }
-}
-
-#[command]
-pub async fn delete_healing_item(id: i32) -> Result<ApiResponse<bool>, String> {
-    let mut items = HEALING_ITEMS.lock().unwrap();
-
-    if items.remove(&id).is_some() {
-        Ok(ApiResponse {
-            code: 200,
-            msg: "删除成功".to_string(),
-            data: true,
-        })
-    } else {
-        Err("记录不存在".to_string())
-    }
-}
-
-#[command]
-pub async fn batch_delete_healing_items(ids: Vec<i32>) -> Result<ApiResponse<i32>, String> {
-    let mut items = HEALING_ITEMS.lock().unwrap();
-    let mut deleted_count = 0;
-
-    for id in ids {
-        if items.remove(&id).is_some() {
-            deleted_count += 1;
-        }
-    }
-
-    Ok(ApiResponse {
-        code: 200,
-        msg: format!("批量删除成功，共删除{}条记录", deleted_count),
-        data: deleted_count,
-    })
 }
 
 #[command]
 pub async fn get_healing_item(id: i32) -> Result<ApiResponse<HealingItem>, String> {
-    let items = HEALING_ITEMS.lock().unwrap();
+    #[cfg(feature = "sqlite-storage")]
+    {
+        let db = get_database();
+        let conn = db.get_connection();
 
-    if let Some(item) = items.get(&id) {
-        Ok(ApiResponse {
-            code: 200,
-            msg: "获取成功".to_string(),
-            data: item.clone(),
-        })
-    } else {
-        Err("记录不存在".to_string())
-    }
-}
+        let result = conn.query_row(
+            "SELECT * FROM healing_items WHERE id = ?1",
+            params![id],
+            row_to_healing_item,
+        );
 
-#[command]
-pub async fn get_healing_statistics() -> Result<ApiResponse<HealingStatistics>, String> {
-    let items = HEALING_ITEMS.lock().unwrap();
-    
-    let total = items.len() as i32;
-    let enabled = items.values().filter(|item| item.status == "1").count() as i32;
-    let disabled = items.values().filter(|item| item.status == "2").count() as i32;
-    
-    let mut by_category = HashMap::new();
-    for item in items.values() {
-        *by_category.entry(item.category.clone()).or_insert(0) += 1;
-    }
-
-    let statistics = HealingStatistics {
-        total,
-        enabled,
-        disabled,
-        by_category,
-    };
-
-    Ok(ApiResponse {
-        code: 200,
-        msg: "获取统计信息成功".to_string(),
-        data: statistics,
-    })
-}
-
-#[command]
-pub async fn batch_update_healing_status(ids: Vec<i32>, status: String) -> Result<ApiResponse<i32>, String> {
-    let mut items = HEALING_ITEMS.lock().unwrap();
-    let mut updated_count = 0;
-
-    for id in ids {
-        if let Some(item) = items.get_mut(&id) {
-            item.status = status.clone();
-            item.update_time = Some(chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string());
-            updated_count += 1;
+        match result {
+            Ok(item) => Ok(ApiResponse {
+                code: 200,
+                msg: "查询成功".to_string(),
+                data: item,
+            }),
+            Err(rusqlite::Error::QueryReturnedNoRows) => Err("记录不存在".to_string()),
+            Err(e) => Err(format!("查询失败: {}", e)),
         }
     }
 
-    Ok(ApiResponse {
-        code: 200,
-        msg: format!("批量更新状态成功，共更新{}条记录", updated_count),
-        data: updated_count,
-    })
+    #[cfg(feature = "memory-storage")]
+    {
+        let items = HEALING_ITEMS.lock().unwrap();
+
+        if let Some(item) = items.get(&id) {
+            Ok(ApiResponse {
+                code: 200,
+                msg: "查询成功".to_string(),
+                data: item.clone(),
+            })
+        } else {
+            Err("记录不存在".to_string())
+        }
+    }
 }
 
-// 初始化示例数据
+#[command]
+pub async fn batch_delete_healing_items(ids: Vec<i32>) -> Result<ApiResponse<String>, String> {
+    #[cfg(feature = "sqlite-storage")]
+    {
+        let db = get_database();
+        let conn = db.get_connection();
+
+        let placeholders = ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+        let query = format!("DELETE FROM healing_items WHERE id IN ({})", placeholders);
+
+        let params: Vec<&dyn rusqlite::ToSql> =
+            ids.iter().map(|id| id as &dyn rusqlite::ToSql).collect();
+
+        let result = conn.execute(&query, &params[..]);
+
+        match result {
+            Ok(deleted) => Ok(ApiResponse {
+                code: 200,
+                msg: format!("批量删除成功，删除了{}条记录", deleted),
+                data: "ok".to_string(),
+            }),
+            Err(e) => Err(format!("批量删除失败: {}", e)),
+        }
+    }
+
+    #[cfg(feature = "memory-storage")]
+    {
+        let mut items = HEALING_ITEMS.lock().unwrap();
+        let mut deleted_count = 0;
+
+        for id in ids {
+            if items.remove(&id).is_some() {
+                deleted_count += 1;
+            }
+        }
+
+        Ok(ApiResponse {
+            code: 200,
+            msg: format!("批量删除成功，删除了{}条记录", deleted_count),
+            data: "ok".to_string(),
+        })
+    }
+}
+
+// 初始化示例数据（仅内存模式）
+#[cfg(feature = "memory-storage")]
 pub fn init_sample_data() {
     let mut items = HEALING_ITEMS.lock().unwrap();
     let mut next_id = NEXT_ID.lock().unwrap();
@@ -256,83 +498,19 @@ pub fn init_sample_data() {
         let sample_items = vec![
             HealingItem {
                 id: Some(1),
-                name: "理疗".to_string(),
-                description: Some("物理治疗，缓解疼痛".to_string()),
-                price: 150.0,
-                category: "理疗".to_string(),
-                status: "1".to_string(),
-                create_time: Some(chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string()),
-                update_time: Some(chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string()),
+                name: "针灸治疗".to_string(),
+                description: Some("传统中医针灸，疏通经络，调节气血".to_string()),
+                price: 80.0,
+                create_time: Some("2024-01-01 10:00:00".to_string()),
+                update_time: Some("2024-01-01 10:00:00".to_string()),
             },
             HealingItem {
                 id: Some(2),
-                name: "针灸".to_string(),
-                description: Some("传统中医针灸治疗".to_string()),
-                price: 200.0,
-                category: "针灸".to_string(),
-                status: "1".to_string(),
-                create_time: Some(chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string()),
-                update_time: Some(chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string()),
-            },
-            HealingItem {
-                id: Some(3),
-                name: "按摩".to_string(),
-                description: Some("中式按摩，放松肌肉".to_string()),
-                price: 100.0,
-                category: "按摩".to_string(),
-                status: "1".to_string(),
-                create_time: Some(chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string()),
-                update_time: Some(chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string()),
-            },
-            HealingItem {
-                id: Some(4),
-                name: "拔罐".to_string(),
-                description: Some("中医拔罐疗法".to_string()),
+                name: "推拿按摩".to_string(),
+                description: Some("专业推拿按摩，缓解肌肉疲劳".to_string()),
                 price: 120.0,
-                category: "中医调理".to_string(),
-                status: "1".to_string(),
-                create_time: Some(chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string()),
-                update_time: Some(chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string()),
-            },
-            HealingItem {
-                id: Some(5),
-                name: "康复训练".to_string(),
-                description: Some("专业康复运动训练".to_string()),
-                price: 180.0,
-                category: "康复训练".to_string(),
-                status: "2".to_string(), // 禁用状态
-                create_time: Some(chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string()),
-                update_time: Some(chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string()),
-            },
-            HealingItem {
-                id: Some(6),
-                name: "推拿".to_string(),
-                description: Some("传统中医推拿手法".to_string()),
-                price: 160.0,
-                category: "按摩".to_string(),
-                status: "1".to_string(),
-                create_time: Some(chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string()),
-                update_time: Some(chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string()),
-            },
-            HealingItem {
-                id: Some(7),
-                name: "刮痧".to_string(),
-                description: Some("中医刮痧疗法".to_string()),
-                price: 80.0,
-                category: "中医调理".to_string(),
-                status: "1".to_string(),
-                create_time: Some(chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string()),
-                update_time: Some(chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string()),
-            },
-            HealingItem {
-                id: Some(8),
-                name: "艾灸".to_string(),
-                description: Some("传统艾草灸法".to_string()),
-                price: 140.0,
-                category: "中医调理".to_string(),
-                status: "1".to_string(),
-                create_time: Some(chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string()),
-                update_time: Some(chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string()),
+                create_time: Some("2024-01-01 10:00:00".to_string()),
+                update_time: Some("2024-01-01 10:00:00".to_string()),
             },
         ];
 
@@ -344,7 +522,12 @@ pub fn init_sample_data() {
                 }
             }
         }
-
-        println!("已初始化 {} 条示例康复项目数据", items.len());
     }
+}
+
+// SQLite 模式下的初始化（不需要示例数据）
+#[cfg(feature = "sqlite-storage")]
+pub fn init_sample_data() {
+    // SQLite 模式下不需要初始化示例数据
+    // 数据将从数据库中加载
 }

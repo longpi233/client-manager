@@ -118,45 +118,6 @@ export const batchDeleteHealingItems = async (
   }
 }
 
-/**
- * 获取康复项目统计信息
- * @returns 统计信息
- */
-export const getHealingStatistics = async (): Promise<
-  Api.Http.BaseResponse<Api.Healing.Statistics>
-> => {
-  try {
-    const response =
-      await invoke<Api.Http.BaseResponse<Api.Healing.Statistics>>('get_healing_statistics')
-    return response
-  } catch (error) {
-    console.error('获取康复项目统计失败:', error)
-    throw new Error(error as string)
-  }
-}
-
-/**
- * 批量更新康复项目状态
- * @param ids 项目ID数组
- * @param status 新状态
- * @returns 更新的项目数量
- */
-export const batchUpdateStatus = async (
-  ids: number[],
-  status: Api.Healing.Status
-): Promise<Api.Http.BaseResponse<number>> => {
-  try {
-    const response = await invoke<Api.Http.BaseResponse<number>>('batch_update_healing_status', {
-      ids,
-      status
-    })
-    return response
-  } catch (error) {
-    console.error('批量更新状态失败:', error)
-    throw new Error(error as string)
-  }
-}
-
 // 导出康复项目服务对象（可选，方便统一管理）
 export const HealingService = {
   getList: getHealingList,
@@ -164,7 +125,5 @@ export const HealingService = {
   create: createHealingItem,
   update: updateHealingItem,
   delete: deleteHealingItem,
-  batchDelete: batchDeleteHealingItems,
-  getStatistics: getHealingStatistics,
-  batchUpdateStatus
+  batchDelete: batchDeleteHealingItems
 } as const

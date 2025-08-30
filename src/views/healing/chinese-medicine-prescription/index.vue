@@ -255,12 +255,11 @@
           <ElCol :span="16">
             <div class="form-actions">
               <ElButton @click="resetForm">重置</ElButton>
-              <ElButton type="success" @click="generatePrescription" :loading="loading">
-                生成中药处方
+              <ElButton type="primary" @click="submitRegistration" :loading="loading">
+                提交登记
               </ElButton>
-              <ElButton type="warning" @click="generateFeeList" :loading="loading">
-                生成费用清单
-              </ElButton>
+              <ElButton type="success" @click="printPrescription" plain> 生成中药处方 </ElButton>
+              <ElButton type="warning" @click="printFeeList" plain> 生成费用清单 </ElButton>
             </div>
           </ElCol>
         </ElRow>
@@ -280,6 +279,7 @@
     ElDatePicker,
     ElInput,
     ElMessage,
+    ElMessageBox,
     ElOption,
     ElSelect,
     ElIcon,
@@ -289,31 +289,14 @@
   import { Plus } from '@element-plus/icons-vue'
   import { getInstitutionInfo } from '@/api/institutionApi'
   import { getChineseMedicineList } from '@/api/chineseMedicineApi'
-  import { createChineseMedicinePrescription } from '@/api/chineseMedicinePrescriptionApi'
-
-  // 枚举定义
-  enum Gender {
-    Male = 'Male',
-    Female = 'Female'
-  }
-
-  enum TradeType {
-    Cash = 'Cash',
-    ProvincialInsurance = 'ProvincialInsurance',
-    WuHanInsurance = 'WuHanInsurance'
-  }
-
-  // 选项配置
-  const GENDER_OPTIONS = [
-    { label: '男', value: Gender.Male },
-    { label: '女', value: Gender.Female }
-  ]
-
-  const TRADE_TYPE_OPTIONS = [
-    { label: '现金结算', value: TradeType.Cash },
-    { label: '省直医保', value: TradeType.ProvincialInsurance },
-    { label: '武汉医保', value: TradeType.WuHanInsurance }
-  ]
+  import { createPrescriptionRecord } from '@/api/unifiedMedicalRecordApi'
+  import { GENDER_OPTIONS, TRADE_TYPE_OPTIONS } from '@/config/common'
+  import {
+    printPrescription as printPrescriptionTemplate,
+    printFeeList as printFeeListTemplate,
+    type PrescriptionData,
+    type FeeListData
+  } from '@/utils/print'
 
   // 表单数据
   interface PrescriptionFormItem {
@@ -360,6 +343,7 @@
   // 状态管理
   const loading = ref(false)
   const chineseMedicinesLoading = ref(false)
+  const isSubmitting = ref(false) // 防止重复提交
 
   // 医师数据
   const doctorList = ref<{ id: number; name: string }[]>([])
@@ -402,8 +386,7 @@
       const res = await getChineseMedicineList({
         current: 1,
         size: 100,
-        name: '',
-        status: '1' // 只获取启用的中药
+        name: ''
       })
       if (res.code === 200) {
         chineseMedicines.value = res.data.records
@@ -415,32 +398,27 @@
           {
             id: 1,
             name: '人参',
-            price: 0.5,
-            status: '1' as Api.ChineseMedicine.Status
+            price: 0.5
           },
           {
             id: 2,
             name: '当归',
-            price: 0.3,
-            status: '1' as Api.ChineseMedicine.Status
+            price: 0.3
           },
           {
             id: 3,
             name: '黄芪',
-            price: 0.2,
-            status: '1' as Api.ChineseMedicine.Status
+            price: 0.2
           },
           {
             id: 4,
             name: '川芎',
-            price: 0.25,
-            status: '1' as Api.ChineseMedicine.Status
+            price: 0.25
           },
           {
             id: 5,
             name: '白芍',
-            price: 0.4,
-            status: '1' as Api.ChineseMedicine.Status
+            price: 0.4
           }
         ]
         chineseMedicines.value = mockChineseMedicines
@@ -453,32 +431,27 @@
         {
           id: 1,
           name: '人参',
-          price: 0.5,
-          status: '1' as Api.ChineseMedicine.Status
+          price: 0.5
         },
         {
           id: 2,
           name: '当归',
-          price: 0.3,
-          status: '1' as Api.ChineseMedicine.Status
+          price: 0.3
         },
         {
           id: 3,
           name: '黄芪',
-          price: 0.2,
-          status: '1' as Api.ChineseMedicine.Status
+          price: 0.2
         },
         {
           id: 4,
           name: '川芎',
-          price: 0.25,
-          status: '1' as Api.ChineseMedicine.Status
+          price: 0.25
         },
         {
           id: 5,
           name: '白芍',
-          price: 0.4,
-          status: '1' as Api.ChineseMedicine.Status
+          price: 0.4
         }
       ]
       chineseMedicines.value = mockChineseMedicines
@@ -499,8 +472,7 @@
       const res = await getChineseMedicineList({
         current: 1,
         size: 100,
-        name: query,
-        status: '1'
+        name: query
       })
       if (res.code === 200) {
         filteredChineseMedicines.value = res.data.records
@@ -522,16 +494,20 @@
     calculateTotalPrice()
   }
 
-  // 获取单价
+  // 获取单价（显示为元）
   const getUnitPrice = (index: number): string => {
     const medicineName = form.prescription[index]?.medicineName
     if (!medicineName) return '¥0.00'
 
     const medicine = chineseMedicines.value.find((item) => item.name === medicineName)
-    return medicine ? `¥${medicine.price}` : '¥0.00'
+    if (!medicine) return '¥0.00'
+
+    // medicine.price 假设以分为单位存储，转换为元显示
+    const priceInYuan = medicine.price / 100
+    return `¥${priceInYuan.toFixed(2)}`
   }
 
-  // 获取项目总价
+  // 获取项目总价（显示为元）
   const getItemTotalPrice = (index: number): string => {
     const medicineName = form.prescription[index]?.medicineName
     const grams = form.prescription[index]?.grams || 0
@@ -539,27 +515,40 @@
     if (!medicineName || !grams) return '¥0.00'
 
     const medicine = chineseMedicines.value.find((item) => item.name === medicineName)
-    const unitPrice = medicine ? medicine.price : 0
+    if (!medicine) return '¥0.00'
 
-    return `¥${(unitPrice * grams).toFixed(2)}`
+    // medicine.price 以分为单位，计算总价（分）
+    const totalPriceInCents = medicine.price * grams
+    // 转换为元显示
+    const totalPriceInYuan = totalPriceInCents / 100
+    return `¥${totalPriceInYuan.toFixed(2)}`
   }
 
-  // 计算单付金额
+  // 计算单付金额（显示为元）
   const singleDoseAmount = computed(() => {
-    return form.prescription
-      .reduce((total, item) => {
+    let totalCents = 0
+
+    form.prescription.forEach((item) => {
+      if (item.medicineName && item.grams) {
         const medicine = chineseMedicines.value.find((med) => med.name === item.medicineName)
-        const unitPrice = medicine ? medicine.price : 0
-        return total + unitPrice * (item.grams || 0)
-      }, 0)
-      .toFixed(2)
+        if (medicine) {
+          // medicine.price 以分为单位，乘以克数得到总价（分）
+          totalCents += medicine.price * item.grams
+        }
+      }
+    })
+
+    // 转换为元显示
+    const totalYuan = totalCents / 100
+    return totalYuan.toFixed(2)
   })
 
-  // 计算总金额
+  // 计算总金额（显示为元）
   const totalAmount = computed(() => {
-    const singleAmount = parseFloat(singleDoseAmount.value)
+    const singleAmountInYuan = parseFloat(singleDoseAmount.value)
     const doses = form.doses || 1
-    return (singleAmount * doses).toFixed(2)
+    const totalInYuan = singleAmountInYuan * doses
+    return totalInYuan.toFixed(2)
   })
 
   // 计算总价
@@ -589,92 +578,160 @@
     form.timeOfVisit = new Date()
   }
 
-  // 生成中药处方
-  const generatePrescription = async () => {
-    if (loading.value) return
+  // 提交登记
+  const submitRegistration = async () => {
+    if (loading.value || isSubmitting.value) return
+
+    // 重复提交确认
+    if (isSubmitting.value) {
+      try {
+        await ElMessageBox.confirm('检测到正在提交中，是否确认再次提交？', '确认提交', {
+          confirmButtonText: '确认',
+          cancelButtonText: '取消',
+          type: 'warning'
+        })
+      } catch {
+        return // 用户取消
+      }
+    }
 
     try {
       loading.value = true
+      isSubmitting.value = true
       await formRef.value?.validate()
 
       // 获取选中医师的姓名
       const selectedDoctor = doctorList.value.find((doctor) => doctor.id === Number(form.doctorId))
       const doctorName = selectedDoctor?.name || '未知医师'
 
-      // 构造中药处方数据
+      // 构造中药处方数据 (统一API)
       const prescriptionData = {
-        customer_id: 1, // 暂时使用固定值，实际应该根据患者信息获取
         customer_name: form.customerName,
         gender: form.gender,
         age: form.age!,
-        phone: form.telephone,
+        telephone: form.telephone,
         diagnosis: form.diagnosis,
-        prescription: form.prescription.map((item) => {
-          const medicine = chineseMedicines.value.find((med) => med.name === item.medicineName)
-          const unitPrice = medicine ? medicine.price : 0
-          return {
-            medicine_name: item.medicineName,
-            unit_price: unitPrice,
-            grams: item.grams,
-            total_price: unitPrice * item.grams
-          }
-        }),
+        prescription_items: form.prescription.map((item) => ({
+          medicine_name: item.medicineName,
+          grams: item.grams
+        })),
         doses: form.doses!,
-        single_dose_amount: parseFloat(singleDoseAmount.value),
-        total_amount: parseFloat(totalAmount.value),
-        doctor_id: form.doctorId,
-        doctor_name: doctorName,
         time_of_visit:
           form.timeOfVisit instanceof Date
             ? form.timeOfVisit.toISOString().slice(0, 19).replace('T', ' ')
             : form.timeOfVisit,
-        note: form.note || undefined
+        trade_type: form.tradeType,
+        note: form.note || undefined,
+        doctor_id: form.doctorId ? Number(form.doctorId) : undefined,
+        doctor_name: doctorName
       }
 
-      console.log('准备发送的处方数据:', prescriptionData)
+      console.log('准备发送的处方数据 (统一API):', prescriptionData)
 
-      // 调用后端API保存处方
-      const response = await createChineseMedicinePrescription(prescriptionData)
+      // 调用后端API保存处方 (统一API)
+      const response = await createPrescriptionRecord(prescriptionData)
 
       if (response.code === 200) {
-        ElMessage.success('中药处方生成成功！')
+        ElMessage.success('中药处方登记成功！')
         console.log('保存成功的处方记录:', response.data)
 
-        // 可选：重置表单或跳转到其他页面
+        // 保留表单数据，不自动重置
         // resetForm()
       } else {
-        ElMessage.error(`保存失败: ${response.msg}`)
+        ElMessage.error(`登记失败: ${response.msg}`)
       }
     } catch (error) {
-      console.error('生成中药处方失败:', error)
-      ElMessage.error('生成中药处方失败，请重试')
+      console.error('提交中药处方登记失败:', error)
+      ElMessage.error('提交中药处方登记失败，请重试')
     } finally {
       loading.value = false
+      // 2秒后重置提交状态
+      setTimeout(() => {
+        isSubmitting.value = false
+      }, 2000)
     }
   }
 
-  // 生成费用清单
-  const generateFeeList = async () => {
-    if (loading.value) return
-
+  // 生成中药处方（打印功能）
+  const printPrescription = async () => {
     try {
-      loading.value = true
       await formRef.value?.validate()
 
-      // 模拟调用后端API
-      console.log('费用清单数据:', {
-        totalAmount: totalAmount.value,
-        singleDoseAmount: singleDoseAmount.value,
-        doses: form.doses,
-        items: form.prescription
-      })
+      // 构建中药处方打印数据
+      const printData: PrescriptionData = {
+        customer_name: form.customerName,
+        gender: form.gender,
+        age: form.age || 0,
+        telephone: form.telephone,
+        time_of_visit:
+          typeof form.timeOfVisit === 'string'
+            ? form.timeOfVisit
+            : form.timeOfVisit.toISOString().slice(0, 19).replace('T', ' '),
+        trade_type: form.tradeType,
+        diagnosis: form.diagnosis,
+        note: form.note,
+        prescription_items: form.prescription.map((item) => {
+          const medicine = filteredChineseMedicines.value.find((m) => m.name === item.medicineName)
+          const unitPrice = medicine ? medicine.price : 0
+          return {
+            medicine_name: item.medicineName,
+            grams: item.grams,
+            unit_price: unitPrice,
+            total_price: unitPrice * item.grams
+          }
+        }),
+        doses: form.doses || 1,
+        single_dose_amount: parseFloat(singleDoseAmount.value),
+        total_amount: parseFloat(totalAmount.value),
+        doctor_name: doctorList.value.find((doctor) => doctor.id === parseInt(form.doctorId))?.name
+      }
 
-      ElMessage.success('费用清单生成成功')
+      printPrescriptionTemplate(printData)
+      ElMessage.success('中药处方打印成功')
     } catch (error) {
-      console.error('生成费用清单失败:', error)
-      ElMessage.error('生成费用清单失败')
-    } finally {
-      loading.value = false
+      console.error('打印中药处方失败:', error)
+      ElMessage.error('请先完善必填信息')
+    }
+  }
+
+  // 生成费用清单（打印功能）
+  const printFeeList = async () => {
+    try {
+      await formRef.value?.validate()
+
+      // 构建费用清单打印数据
+      const feeListData: FeeListData = {
+        customer_name: form.customerName,
+        gender: form.gender,
+        age: form.age || 0,
+        telephone: form.telephone,
+        time_of_visit:
+          typeof form.timeOfVisit === 'string'
+            ? form.timeOfVisit
+            : form.timeOfVisit.toISOString().slice(0, 19).replace('T', ' '),
+        trade_type: form.tradeType,
+        diagnosis: form.diagnosis,
+        note: form.note,
+        treatment_items: form.prescription.map((item) => {
+          const medicine = filteredChineseMedicines.value.find((m) => m.name === item.medicineName)
+          const unitPrice = medicine ? medicine.price : 0
+          const singleTotal = unitPrice * item.grams
+          return {
+            treatment_item: `${item.medicineName} (${item.grams}g)`,
+            count: form.doses || 1,
+            unit_price: singleTotal,
+            total_price: singleTotal * (form.doses || 1)
+          }
+        }),
+        total_amount: parseFloat(totalAmount.value),
+        doctor_name: doctorList.value.find((doctor) => doctor.id === parseInt(form.doctorId))?.name
+      }
+
+      printFeeListTemplate(feeListData)
+      ElMessage.success('费用清单打印成功')
+    } catch (error) {
+      console.error('打印费用清单失败:', error)
+      ElMessage.error('请先完善必填信息')
     }
   }
 
