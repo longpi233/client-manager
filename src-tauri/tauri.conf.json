@@ -2,7 +2,7 @@
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "client-manager",
   "version": "0.1.0",
-  "identifier": "com.tauri.dev",
+  "identifier": "com.healthclinic.manager",
   "build": {
     "frontendDist": ".../dist",
     "devUrl": "http://localhost:3006",

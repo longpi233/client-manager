@@ -605,9 +605,22 @@
     // 转换为图表数据格式
     const sortedDates = Array.from(dailyRevenue.keys()).sort()
     const data = sortedDates.map((date) => dailyRevenue.get(date) || 0)
+
+    // 优化 x 轴标签显示，跨年时显示年份
     const xAxisData = sortedDates.map((date) => {
       const dateObj = new Date(date)
-      return `${dateObj.getMonth() + 1}/${dateObj.getDate()}`
+      const year = dateObj.getFullYear()
+      const month = dateObj.getMonth() + 1
+      const day = dateObj.getDate()
+
+      // 如果数据跨年，显示年/月/日格式
+      const years = new Set(sortedDates.map((d) => new Date(d).getFullYear()))
+      if (years.size > 1) {
+        return `${year}/${month}/${day}`
+      } else {
+        // 单年内显示月/日格式
+        return `${month}/${day}`
+      }
     })
 
     return { data, xAxisData }
@@ -790,7 +803,9 @@
       if (searchParams.queryType === 'month') {
         const [year, month] = searchParams.month.split('-')
         startDate = `${year}-${month}-01`
-        endDate = new Date(Number(year), Number(month), 0).toISOString().split('T')[0] // 月末日期
+        // 修复月末日期计算：使用下个月的第0天来获取当前月的最后一天
+        const lastDay = new Date(Number(year), Number(month), 0).getDate()
+        endDate = `${year}-${month}-${String(lastDay).padStart(2, '0')}`
       } else if (searchParams.queryType === 'year') {
         startDate = `${searchParams.year}-01-01`
         endDate = `${searchParams.year}-12-31`
@@ -803,8 +818,8 @@
 
       // 调用统一的门诊日志API
       const response = await getOutpatientLogList({
-        current: pagination.current,
-        size: pagination.size,
+        current: 1, // 始终从第一页开始获取所有数据
+        size: 10000, // 设置足够大的数量以获取所有数据
         start_date: startDate,
         end_date: endDate,
         data_type: (searchParams.dataType as 'customer' | 'medical' | 'prescription') || undefined,
@@ -814,29 +829,20 @@
       if (response.code === 200) {
         const { records, total } = response.data
 
-        // 更新表格数据
-        tableData.value = records
+        // 保存所有搜索结果
+        allSearchResults.value = records
+
+        // 按时间倒序排序（默认最新的在前面）
+        allSearchResults.value.sort(
+          (a, b) => new Date(b.time_of_visit).getTime() - new Date(a.time_of_visit).getTime()
+        )
+
+        // 重置分页到第一页
+        pagination.current = 1
         pagination.total = total
 
-        // 为了统计和图表，我们需要获取所有数据
-        if (pagination.current === 1) {
-          // 如果是第一页，获取所有数据用于统计
-          const allDataResponse = await getOutpatientLogList({
-            current: 1,
-            size: 1000, // 获取足够多的数据
-            start_date: startDate,
-            end_date: endDate,
-            data_type:
-              (searchParams.dataType as 'customer' | 'medical' | 'prescription') || undefined,
-            trade_type: searchParams.tradeType || undefined
-          })
-
-          if (allDataResponse.code === 200) {
-            allSearchResults.value = allDataResponse.data.records
-          } else {
-            allSearchResults.value = records
-          }
-        }
+        // 更新表格数据
+        updateTableData()
 
         ElMessage.success(`查询完成，共找到 ${total} 条记录`)
       } else {
@@ -902,20 +908,27 @@
     const startIndex = (pagination.current - 1) * pagination.size
     const endIndex = startIndex + pagination.size
     tableData.value = allSearchResults.value.slice(startIndex, endIndex)
+
+    // 更新分页总数
+    pagination.total = allSearchResults.value.length
   }
 
   // 排序处理
   const handleSortChange = ({ prop, order }: any) => {
     if (prop === 'time_of_visit') {
+      // 对所有搜索结果进行排序，而不仅仅是当前页数据
       if (order === 'ascending') {
-        tableData.value.sort(
+        allSearchResults.value.sort(
           (a, b) => new Date(a.time_of_visit).getTime() - new Date(b.time_of_visit).getTime()
         )
-      } else {
-        tableData.value.sort(
+      } else if (order === 'descending') {
+        allSearchResults.value.sort(
           (a, b) => new Date(b.time_of_visit).getTime() - new Date(a.time_of_visit).getTime()
         )
       }
+
+      // 重新计算当前页数据
+      updateTableData()
     }
   }
 
