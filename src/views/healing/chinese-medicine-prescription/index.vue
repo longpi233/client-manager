@@ -171,14 +171,14 @@
                       :prop="`prescription.${index}.grams`"
                       :rules="[
                         { required: true, message: '请输入克数', trigger: 'blur' },
-                        { type: 'number', min: 0.1, message: '克数不能小于0.1', trigger: 'blur' }
+                        { type: 'number', min: 1, message: '克数不能小于1', trigger: 'blur' }
                       ]"
                     >
                       <ElInput
                         v-model.number="item.grams"
                         type="number"
-                        min="0.1"
-                        step="0.1"
+                        min="1"
+                        step="1"
                         placeholder="克数"
                         @input="calculateTotalPrice"
                       />
@@ -398,27 +398,27 @@
           {
             id: 1,
             name: '人参',
-            price: 0.5
+            price: 50 // 0.5元 = 50分
           },
           {
             id: 2,
             name: '当归',
-            price: 0.3
+            price: 30 // 0.3元 = 30分
           },
           {
             id: 3,
             name: '黄芪',
-            price: 0.2
+            price: 20 // 0.2元 = 20分
           },
           {
             id: 4,
             name: '川芎',
-            price: 0.25
+            price: 25 // 0.25元 = 25分
           },
           {
             id: 5,
             name: '白芍',
-            price: 0.4
+            price: 40 // 0.4元 = 40分
           }
         ]
         chineseMedicines.value = mockChineseMedicines
@@ -431,27 +431,27 @@
         {
           id: 1,
           name: '人参',
-          price: 0.5
+          price: 50 // 0.5元 = 50分
         },
         {
           id: 2,
           name: '当归',
-          price: 0.3
+          price: 30 // 0.3元 = 30分
         },
         {
           id: 3,
           name: '黄芪',
-          price: 0.2
+          price: 20 // 0.2元 = 20分
         },
         {
           id: 4,
           name: '川芎',
-          price: 0.25
+          price: 25 // 0.25元 = 25分
         },
         {
           id: 5,
           name: '白芍',
-          price: 0.4
+          price: 40 // 0.4元 = 40分
         }
       ]
       chineseMedicines.value = mockChineseMedicines
@@ -611,11 +611,21 @@
         age: form.age!,
         telephone: form.telephone,
         diagnosis: form.diagnosis,
-        prescription_items: form.prescription.map((item) => ({
-          medicine_name: item.medicineName,
-          grams: item.grams
-        })),
+        prescription_items: form.prescription.map((item) => {
+          const medicine = chineseMedicines.value.find((med) => med.name === item.medicineName)
+          const unitPrice = medicine ? medicine.price : 0 // 价格以分为单位
+          const totalPrice = Math.round(unitPrice * item.grams) // 使用 Math.round 避免浮点精度问题
+          return {
+            medicine_name: item.medicineName,
+            grams: item.grams,
+            unit_price: Math.round(unitPrice), // 确保是整数
+            total_price: totalPrice // 总价(分)
+          }
+        }),
         doses: form.doses!,
+        // 计算单付金额和总金额（以分为单位），使用 Math.round 避免浮点精度问题
+        single_dose_amount: Math.round(parseFloat(singleDoseAmount.value) * 100), // 转换为分
+        total_amount: Math.round(parseFloat(totalAmount.value) * 100), // 转换为分
         time_of_visit:
           form.timeOfVisit instanceof Date
             ? form.timeOfVisit.toISOString().slice(0, 19).replace('T', ' ')
@@ -672,12 +682,14 @@
         note: form.note,
         prescription_items: form.prescription.map((item) => {
           const medicine = filteredChineseMedicines.value.find((m) => m.name === item.medicineName)
-          const unitPrice = medicine ? medicine.price : 0
+          const unitPriceInCents = medicine ? medicine.price : 0 // 价格以分为单位
+          const unitPriceInYuan = unitPriceInCents / 100 // 转换为元
+          const totalPriceInYuan = unitPriceInYuan * item.grams // 总价(元)
           return {
             medicine_name: item.medicineName,
             grams: item.grams,
-            unit_price: unitPrice,
-            total_price: unitPrice * item.grams
+            unit_price: unitPriceInYuan, // 打印时使用元
+            total_price: totalPriceInYuan // 打印时使用元
           }
         }),
         doses: form.doses || 1,
@@ -714,13 +726,14 @@
         note: form.note,
         treatment_items: form.prescription.map((item) => {
           const medicine = filteredChineseMedicines.value.find((m) => m.name === item.medicineName)
-          const unitPrice = medicine ? medicine.price : 0
-          const singleTotal = unitPrice * item.grams
+          const unitPriceInCents = medicine ? medicine.price : 0 // 价格以分为单位
+          const unitPriceInYuan = unitPriceInCents / 100 // 转换为元
+          const singleTotalInYuan = unitPriceInYuan * item.grams // 单付总价(元)
           return {
             treatment_item: `${item.medicineName} (${item.grams}g)`,
             count: form.doses || 1,
-            unit_price: singleTotal,
-            total_price: singleTotal * (form.doses || 1)
+            unit_price: singleTotalInYuan, // 单付价格(元)
+            total_price: singleTotalInYuan * (form.doses || 1) // 总价格(元)
           }
         }),
         total_amount: parseFloat(totalAmount.value),

@@ -2,11 +2,8 @@
  * 路由别名，方便快速找到页面，同时可以用作路由跳转
  */
 export enum RoutesAlias {
-  // 布局和认证
+  // 布局
   Layout = '/index/index', // 布局容器
-  Login = '/auth/login', // 登录
-  Register = '/auth/register', // 注册
-  ForgetPassword = '/auth/forget-password', // 忘记密码
 
   // 异常页面
   Exception403 = '/exception/403', // 403
@@ -33,11 +30,5 @@ export enum RoutesAlias {
   // 数据管理
   DataInquiry = '/data/data-inquiry', // 资料查询
   OutpatientLog = '/data/outpatient-log', // 门诊日志
-  DataManagement = '/data/data-management', // 数据管理
-
-  // 系统管理
-  User = '/system/user', // 账户
-  Role = '/system/role', // 角色
-  UserCenter = '/system/user-center', // 用户中心
-  Menu = '/system/menu' // 菜单
+  DataManagement = '/data/data-management' // 数据管理
 }

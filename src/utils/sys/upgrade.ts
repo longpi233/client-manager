@@ -1,6 +1,5 @@
 import { upgradeLogList } from '@/mock/upgrade/changeLog'
 import { ElNotification } from 'element-plus'
-import { useUserStore } from '@/store/modules/user'
 import { StorageConfig } from '@/utils/storage/storage-config'
 
 /**
@@ -143,14 +142,14 @@ class VersionManager {
   }
 
   /**
-   * 执行升级后的登出操作
+   * 执行升级后的登出操作 - 已禁用
    */
   private performLogout(): void {
     try {
-      useUserStore().logOut()
-      console.info('[Upgrade] 已执行升级后登出')
+      // 登录机制已移除，不再执行登出操作
+      console.info('[Upgrade] 升级完成（登录机制已禁用）')
     } catch (error) {
-      console.error('[Upgrade] 升级后登出失败:', error)
+      console.error('[Upgrade] 升级处理失败:', error)
     }
   }
 

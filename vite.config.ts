@@ -20,11 +20,15 @@ export default ({ mode }: { mode: string }) => {
   console.log(`🚀 API_URL = ${VITE_API_URL}`)
   console.log(`🚀 VERSION = ${VITE_VERSION}`)
 
+  // 检测是否为 Tauri 构建环境
+  const isTauri = process.env.TAURI_PLATFORM !== undefined || process.env.TAURI_FAMILY !== undefined
+
   return defineConfig({
     define: {
       __APP_VERSION__: JSON.stringify(VITE_VERSION)
     },
-    base: VITE_BASE_URL,
+    // Tauri 应用使用相对路径，Web 应用使用配置的 base URL
+    base: isTauri ? './' : VITE_BASE_URL,
     server: {
       port: parseInt(VITE_PORT),
       proxy: {

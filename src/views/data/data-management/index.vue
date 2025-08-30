@@ -11,10 +11,10 @@
           <ElButton type="primary" :icon="Plus" @click="showCreateBackupDialog = true">
             创建备份
           </ElButton>
-          <ElButton type="success" :icon="Download" @click="showExportDialog = true">
+          <ElButton type="success" :icon="Upload" @click="showExportDialog = true">
             导出数据
           </ElButton>
-          <ElButton type="warning" :icon="Upload" @click="showImportDialog = true">
+          <ElButton type="warning" :icon="Download" @click="showImportDialog = true">
             导入数据
           </ElButton>
         </div>

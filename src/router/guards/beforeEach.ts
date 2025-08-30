@@ -2,7 +2,6 @@ import type { Router, RouteLocationNormalized, NavigationGuardNext } from 'vue-r
 import { ref, nextTick } from 'vue'
 import NProgress from 'nprogress'
 import { useSettingStore } from '@/store/modules/setting'
-import { useUserStore } from '@/store/modules/user'
 import { useMenuStore } from '@/store/modules/menu'
 import { setWorktab } from '@/utils/navigation'
 import { setPageTitle, setSystemTheme } from '../utils/utils'
@@ -79,7 +78,6 @@ async function handleRouteGuard(
   router: Router
 ): Promise<void> {
   const settingStore = useSettingStore()
-  const userStore = useUserStore()
 
   // 处理进度条
   if (settingStore.showNprogress) {
@@ -89,19 +87,19 @@ async function handleRouteGuard(
   // 设置系统主题
   setSystemTheme(to)
 
-  // 处理登录状态
-  if (!(await handleLoginStatus(to, userStore, next))) {
-    return
-  }
+  // 处理登录状态 - 已禁用登录验证
+  // if (!(await handleLoginStatus(to, userStore, next))) {
+  //   return
+  // }
 
-  // 处理动态路由注册
-  if (!isRouteRegistered.value && userStore.isLogin) {
+  // 处理动态路由注册 - 始终注册路由，不依赖登录状态
+  if (!isRouteRegistered.value) {
     await handleDynamicRoutes(to, router, next)
     return
   }
 
-  // 处理根路径跳转到首页
-  if (userStore.isLogin && isRouteRegistered.value && handleRootPathRedirect(to, next)) {
+  // 处理根路径跳转到首页 - 不依赖登录状态
+  if (isRouteRegistered.value && handleRootPathRedirect(to, next)) {
     return
   }
 
@@ -113,30 +111,14 @@ async function handleRouteGuard(
     return
   }
 
-  // 尝试刷新路由重新注册
-  if (userStore.isLogin && !isRouteRegistered.value) {
+  // 尝试刷新路由重新注册 - 不依赖登录状态
+  if (!isRouteRegistered.value) {
     await handleDynamicRoutes(to, router, next)
     return
   }
 
   // 未匹配到路由，跳转到 404
   next(RoutesAlias.Exception404)
-}
-
-/**
- * 处理登录状态
- */
-async function handleLoginStatus(
-  to: RouteLocationNormalized,
-  userStore: ReturnType<typeof useUserStore>,
-  next: NavigationGuardNext
-): Promise<boolean> {
-  if (!userStore.isLogin && to.path !== RoutesAlias.Login && !to.meta.noLogin) {
-    userStore.logOut()
-    next(RoutesAlias.Login)
-    return false
-  }
-  return true
 }
 
 /**
@@ -192,19 +174,19 @@ async function getMenuData(router: Router): Promise<void> {
  */
 async function processFrontendMenu(router: Router): Promise<void> {
   const menuList = asyncRoutes.map((route) => menuDataToRouter(route))
-  const userStore = useUserStore()
-  const roles = userStore.info.roles
 
-  if (!roles) {
-    throw new Error('获取用户角色失败')
-  }
-
-  const filteredMenuList = filterMenuByRoles(menuList, roles)
+  // 不进行角色过滤，直接使用所有菜单
+  // const userStore = useUserStore()
+  // const roles = userStore.info.roles
+  // if (!roles) {
+  //   throw new Error('获取用户角色失败')
+  // }
+  // const filteredMenuList = filterMenuByRoles(menuList, roles)
 
   // 添加延时以提升用户体验
   await new Promise((resolve) => setTimeout(resolve, LOADING_DELAY))
 
-  await registerAndStoreMenu(router, filteredMenuList)
+  await registerAndStoreMenu(router, menuList)
 }
 
 /**
@@ -268,28 +250,9 @@ async function registerAndStoreMenu(router: Router, menuList: AppRouteRecord[]):
  */
 function handleMenuError(error: unknown): void {
   console.error('菜单处理失败:', error)
-  useUserStore().logOut()
+  // 不再执行登出操作
+  // useUserStore().logOut()
   throw error instanceof Error ? error : new Error('获取菜单列表失败，请重新登录')
-}
-
-/**
- * 根据角色过滤菜单
- */
-const filterMenuByRoles = (menu: AppRouteRecord[], roles: string[]): AppRouteRecord[] => {
-  return menu.reduce((acc: AppRouteRecord[], item) => {
-    const itemRoles = item.meta?.roles
-    const hasPermission = !itemRoles || itemRoles.some((role) => roles?.includes(role))
-
-    if (hasPermission) {
-      const filteredItem = { ...item }
-      if (filteredItem.children?.length) {
-        filteredItem.children = filterMenuByRoles(filteredItem.children, roles)
-      }
-      acc.push(filteredItem)
-    }
-
-    return acc
-  }, [])
 }
 
 /**

@@ -1,12 +1,10 @@
 import axios, { InternalAxiosRequestConfig, AxiosRequestConfig, AxiosResponse } from 'axios'
-import { useUserStore } from '@/store/modules/user'
 import { ApiStatus } from './status'
 import { HttpError, handleError, showError } from './error'
 import { $t } from '@/locales'
 
 // 常量定义
 const REQUEST_TIMEOUT = 15000 // 请求超时时间(毫秒)
-const LOGOUT_DELAY = 1000 // 退出登录延迟时间(毫秒)
 const MAX_RETRIES = 2 // 最大重试次数
 const RETRY_DELAY = 1000 // 重试延迟时间(毫秒)
 
@@ -45,13 +43,9 @@ const axiosInstance = axios.create({
 // 请求拦截器
 axiosInstance.interceptors.request.use(
   (request: InternalAxiosRequestConfig) => {
-    const { accessToken } = useUserStore()
-
-    // 设置 token 和 请求头
-    if (accessToken) {
-      request.headers.set('Authorization', accessToken)
-      request.headers.set('Content-Type', 'application/json')
-    }
+    // 登录机制已移除，不再添加认证 token
+    // 直接设置基本请求头
+    request.headers.set('Content-Type', 'application/json')
 
     return request
   },
@@ -150,11 +144,10 @@ const api = {
   }
 }
 
-// 退出登录函数
+// 退出登录函数 - 已禁用
 const logOut = (): void => {
-  setTimeout(() => {
-    useUserStore().logOut()
-  }, LOGOUT_DELAY)
+  // 登录机制已移除，不再执行登出操作
+  console.log('登录机制已禁用，无需退出登录')
 }
 
 export default api

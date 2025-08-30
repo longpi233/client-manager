@@ -31,6 +31,8 @@ pub struct CreateMedicalRecordParams {
     
     // 中药处方特有字段
     pub doses: Option<i32>,
+    pub single_dose_amount: Option<i64>, // 单付金额（以分为单位）
+    pub total_amount: Option<i64>,       // 总金额（以分为单位）
     
     // 治疗项目 (散客登记和门诊病历使用)
     pub treatment_items: Option<Vec<LegacyTreatmentItem>>,
@@ -76,35 +78,46 @@ pub async fn create_unified_medical_record(params: CreateMedicalRecordParams) ->
     let now = Utc::now().format("%Y-%m-%d %H:%M:%S").to_string();
 
     // 计算总金额（以分为单位）
-    let mut total_amount: i64 = 0;
-    
-    if let Some(treatment_items) = &params.treatment_items {
-        for item in treatment_items {
-            if let Some(total_price) = item.total_price {
-                total_amount += total_price;
+    let total_amount: i64 = if let Some(total) = params.total_amount {
+        // 优先使用前端传递的总金额
+        total
+    } else {
+        // 回退到计算逻辑
+        let mut calculated_total: i64 = 0;
+        
+        if let Some(treatment_items) = &params.treatment_items {
+            for item in treatment_items {
+                if let Some(total_price) = item.total_price {
+                    calculated_total += total_price;
+                }
             }
         }
-    }
-    
-    if let Some(prescription_items) = &params.prescription_items {
-        // 需要从中药表查询单价来计算
-        for item in prescription_items {
-            let unit_price: i64 = conn
-                .query_row(
-                    "SELECT unit_price FROM chinese_medicines WHERE name = ? AND status = '1'",
-                    params![item.medicine_name],
-                    |row| row.get(0)
-                )
-                .unwrap_or(0);  // 价格以分为单位
-            // 计算：单价（分）* 克数 = 总价（分）
-            total_amount += (unit_price as f64 * item.grams) as i64;
+        
+        if let Some(prescription_items) = &params.prescription_items {
+            for item in prescription_items {
+                if let Some(total_price) = item.total_price {
+                    calculated_total += total_price;
+                } else {
+                    // 如果没有传递总价，从数据库查询单价计算
+                    let unit_price: i64 = conn
+                        .query_row(
+                            "SELECT unit_price FROM chinese_medicines WHERE name = ? AND status = '1'",
+                            params![item.medicine_name],
+                            |row| row.get(0)
+                        )
+                        .unwrap_or(0);
+                    calculated_total += (unit_price as f64 * item.grams) as i64;
+                }
+            }
+            
+            // 如果是中药处方，需要乘以付数
+            if let Some(doses) = params.doses {
+                calculated_total *= doses as i64;
+            }
         }
         
-        // 如果是中药处方，需要乘以付数
-        if let Some(doses) = params.doses {
-            total_amount *= doses as i64;  // 使用i64类型
-        }
-    }
+        calculated_total
+    };
 
     // 插入主记录
     let result = conn.execute(
@@ -132,11 +145,13 @@ pub async fn create_unified_medical_record(params: CreateMedicalRecordParams) ->
             params.laboratory_examination,
             params.treatment_method,
             params.doses,
-            if params.record_type == "prescription" { 
-                Some(total_amount / params.doses.unwrap_or(1) as i64) 
-            } else { 
-                None 
-            },
+            params.single_dose_amount.or_else(|| {
+                if params.record_type == "prescription" && params.doses.is_some() {
+                    Some(total_amount / params.doses.unwrap_or(1) as i64)
+                } else {
+                    None
+                }
+            }),
             total_amount,
             params.doctor_id,
             params.doctor_name,
@@ -176,16 +191,21 @@ pub async fn create_unified_medical_record(params: CreateMedicalRecordParams) ->
             // 插入中药处方记录
             if let Some(prescription_items) = params.prescription_items {
                 for item in prescription_items {
-                    // 查询中药单价
-                    let unit_price: f64 = conn
-                        .query_row(
-                            "SELECT unit_price FROM chinese_medicines WHERE name = ? AND status = '1'",
-                            params![item.medicine_name],
-                            |row| row.get(0)
-                        )
-                        .unwrap_or(0.0);
-                    
-                    let total_price = unit_price * item.grams;
+                    // 优先使用前端传递的价格数据（以分为单位）
+                    let (unit_price, total_price) = if let (Some(up), Some(tp)) = (item.unit_price, item.total_price) {
+                        (up, tp) // 直接使用，已经是分为单位
+                    } else {
+                        // 回退到查询数据库
+                        let queried_unit_price: i64 = conn
+                            .query_row(
+                                "SELECT unit_price FROM chinese_medicines WHERE name = ? AND status = '1'",
+                                params![item.medicine_name],
+                                |row| row.get(0)
+                            )
+                            .unwrap_or(0); // 数据库中存储的就是分为单位
+                        let calculated_total_price = (queried_unit_price as f64 * item.grams) as i64;
+                        (queried_unit_price, calculated_total_price)
+                    };
                     
                     conn.execute(
                         "INSERT INTO medical_prescription_items (

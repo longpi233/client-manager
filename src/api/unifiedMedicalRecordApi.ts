@@ -65,6 +65,8 @@ export interface TreatmentFormItem {
 export interface PrescriptionFormItem {
   medicine_name: string
   grams: number
+  unit_price?: number // 单价（以分为单位）
+  total_price?: number // 总价（以分为单位）
 }
 
 export interface CreateMedicalRecordParams {
@@ -84,6 +86,8 @@ export interface CreateMedicalRecordParams {
   laboratory_examination?: string
   treatment_method?: string
   doses?: number
+  single_dose_amount?: number // 单付金额（以分为单位）
+  total_amount?: number // 总金额（以分为单位）
   treatment_items?: TreatmentFormItem[]
   prescription_items?: PrescriptionFormItem[]
   doctor_id?: number

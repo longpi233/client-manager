@@ -48,33 +48,8 @@ const fastEnterConfig: FastEnterConfig = {
       order: 4
     }
   ],
-  // 快速链接
-  quickLinks: [
-    {
-      name: '登录',
-      path: RoutesAlias.Login,
-      enabled: true,
-      order: 1
-    },
-    {
-      name: '注册',
-      path: RoutesAlias.Register,
-      enabled: true,
-      order: 2
-    },
-    {
-      name: '忘记密码',
-      path: RoutesAlias.ForgetPassword,
-      enabled: true,
-      order: 3
-    },
-    {
-      name: '个人中心',
-      path: RoutesAlias.UserCenter,
-      enabled: true,
-      order: 4
-    }
-  ]
+  // 快速链接 - 登录相关功能已移除
+  quickLinks: []
 }
 
 export default Object.freeze(fastEnterConfig)

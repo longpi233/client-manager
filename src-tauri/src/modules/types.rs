@@ -116,6 +116,8 @@ pub struct LegacyTreatmentItem {
 pub struct PrescriptionFormItem {
     pub medicine_name: String,
     pub grams: f64,
+    pub unit_price: Option<i64>,  // 单价（以分为单位）
+    pub total_price: Option<i64>, // 总价（以分为单位）
 }
 
 #[derive(Debug, Serialize, Deserialize)]

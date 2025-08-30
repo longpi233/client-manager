@@ -1,10 +1,10 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "client-manager",
-  "version": "0.1.0",
-  "identifier": "com.healthclinic.manager",
+  "productName": "维康诊所管理系统",
+  "version": "1.0.0",
+  "identifier": "com.healthclinic.management",
   "build": {
-    "frontendDist": ".../dist",
+    "frontendDist": "../dist",
     "devUrl": "http://localhost:3006",
     "beforeDevCommand": "pnpm dev",
     "beforeBuildCommand": "pnpm build"

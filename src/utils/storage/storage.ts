@@ -1,8 +1,5 @@
 import { ElMessage } from 'element-plus'
-import { router } from '@/router'
-import { useUserStore } from '@/store/modules/user'
 import { StorageConfig } from '@/utils/storage/storage-config'
-import { RoutesAlias } from '@/router/routesAlias'
 
 /**
  * 存储兼容性管理器
@@ -74,17 +71,16 @@ class StorageCompatibilityManager {
   }
 
   /**
-   * 执行系统登出
+   * 执行系统登出 - 已禁用
    */
   private performSystemLogout(): void {
     setTimeout(() => {
       try {
         localStorage.clear()
-        useUserStore().logOut()
-        router.push(RoutesAlias.Login)
-        console.info('[Storage] 已执行系统登出')
+        // 登录机制已移除，不再执行登出和重定向
+        console.info('[Storage] 存储已清理（登录机制已禁用）')
       } catch (error) {
-        console.error('[Storage] 系统登出失败:', error)
+        console.error('[Storage] 存储清理失败:', error)
       }
     }, StorageConfig.LOGOUT_DELAY)
   }
@@ -98,10 +94,11 @@ class StorageCompatibilityManager {
   }
 
   /**
-   * 检查是否在登录页面
+   * 检查是否在登录页面 - 已禁用
    */
   private isOnLoginPage(): boolean {
-    return location.href.includes(RoutesAlias.Login)
+    // 登录机制已移除，总是返回 false
+    return false
   }
 
   /**

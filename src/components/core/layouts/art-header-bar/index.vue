@@ -124,57 +124,7 @@
           </div>
         </div>
 
-        <!-- 用户头像、菜单 -->
-        <div class="user">
-          <ElPopover
-            ref="userMenuPopover"
-            placement="bottom-end"
-            :width="240"
-            :hide-after="0"
-            :offset="10"
-            trigger="hover"
-            :show-arrow="false"
-            popper-class="user-menu-popover"
-            popper-style="border: 1px solid var(--art-border-dashed-color); border-radius: calc(var(--custom-radius) / 2 + 4px); padding: 5px 16px; 5px 16px;"
-          >
-            <template #reference>
-              <img class="cover" src="@imgs/user/avatar.webp" alt="avatar" />
-            </template>
-            <template #default>
-              <div class="user-menu-box">
-                <div class="user-head">
-                  <img class="cover" src="@imgs/user/avatar.webp" style="float: left" />
-                  <div class="user-wrap">
-                    <span class="name">{{ userInfo.userName }}</span>
-                    <span class="email">art.design@gmail.com</span>
-                  </div>
-                </div>
-                <ul class="user-menu">
-                  <li @click="goPage('/system/user-center')">
-                    <i class="menu-icon iconfont-sys">&#xe734;</i>
-                    <span class="menu-txt">{{ $t('topBar.user.userCenter') }}</span>
-                  </li>
-                  <li @click="toDocs()">
-                    <i class="menu-icon iconfont-sys" style="font-size: 15px">&#xe828;</i>
-                    <span class="menu-txt">{{ $t('topBar.user.docs') }}</span>
-                  </li>
-                  <li @click="toGithub()">
-                    <i class="menu-icon iconfont-sys">&#xe8d6;</i>
-                    <span class="menu-txt">{{ $t('topBar.user.github') }}</span>
-                  </li>
-                  <li @click="lockScreen()">
-                    <i class="menu-icon iconfont-sys">&#xe817;</i>
-                    <span class="menu-txt">{{ $t('topBar.user.lockScreen') }}</span>
-                  </li>
-                  <div class="line"></div>
-                  <div class="logout-btn" @click="loginOut">
-                    {{ $t('topBar.user.logout') }}
-                  </div>
-                </ul>
-              </div>
-            </template>
-          </ElPopover>
-        </div>
+        <!-- 用户相关功能已移除 -->
       </div>
     </div>
     <ArtWorkTab />
@@ -186,7 +136,6 @@
 <script setup lang="ts">
   import { useI18n } from 'vue-i18n'
   import { useRouter } from 'vue-router'
-  import { ElMessageBox } from 'element-plus'
   import { useFullscreen, useWindowSize } from '@vueuse/core'
   import { LanguageEnum, MenuTypeEnum, MenuWidth } from '@/enums/appEnum'
   import { useSettingStore } from '@/store/modules/setting'
@@ -194,7 +143,6 @@
   import { useMenuStore } from '@/store/modules/menu'
   import AppConfig from '@/config'
   import { languageOptions } from '@/locales'
-  import { WEB_LINKS } from '@/utils/constants'
   import { mittBus } from '@/utils/sys'
   import { themeAnimation } from '@/utils/theme/animation'
   import { useCommon } from '@/composables/useCommon'
@@ -206,7 +154,7 @@
   const isWindows = navigator.userAgent.includes('Windows')
 
   const router = useRouter()
-  const { locale, t } = useI18n()
+  const { locale } = useI18n()
   const { width } = useWindowSize()
 
   const settingStore = useSettingStore()
@@ -232,12 +180,11 @@
   const { menuOpen, systemThemeColor, showSettingGuide, menuType, isDark, tabStyle } =
     storeToRefs(settingStore)
 
-  const { language, getUserInfo: userInfo } = storeToRefs(userStore)
+  const { language } = storeToRefs(userStore)
   const { menuList } = storeToRefs(menuStore)
 
   const showNotice = ref(false)
   const notice = ref(null)
-  const userMenuPopover = ref()
 
   // 菜单类型判断
   const isLeftMenu = computed(() => menuType.value === MenuTypeEnum.LEFT)
@@ -295,48 +242,10 @@
   }
 
   /**
-   * 页面跳转
-   * @param {string} path - 目标路径
-   */
-  const goPage = (path: string): void => {
-    router.push(path)
-  }
-
-  /**
-   * 打开文档页面
-   */
-  const toDocs = (): void => {
-    window.open(WEB_LINKS.DOCS)
-  }
-
-  /**
-   * 打开 GitHub 页面
-   */
-  const toGithub = (): void => {
-    window.open(WEB_LINKS.GITHUB)
-  }
-
-  /**
    * 跳转到首页
    */
   const toHome = (): void => {
     router.push(useCommon().homePath.value)
-  }
-
-  /**
-   * 用户登出确认
-   */
-  const loginOut = (): void => {
-    closeUserMenu()
-    setTimeout(() => {
-      ElMessageBox.confirm(t('common.logOutTips'), t('common.tips'), {
-        confirmButtonText: t('common.confirm'),
-        cancelButtonText: t('common.cancel'),
-        customClass: 'login-out-dialog'
-      }).then(() => {
-        userStore.logOut()
-      })
-    }, 200)
   }
 
   /**
@@ -416,22 +325,6 @@
    */
   const openChat = (): void => {
     mittBus.emit('openChat')
-  }
-
-  /**
-   * 打开锁屏功能
-   */
-  const lockScreen = (): void => {
-    mittBus.emit('openLockScreen')
-  }
-
-  /**
-   * 关闭用户菜单弹出层
-   */
-  const closeUserMenu = (): void => {
-    setTimeout(() => {
-      userMenuPopover.value.hide()
-    }, 100)
   }
 </script>
 

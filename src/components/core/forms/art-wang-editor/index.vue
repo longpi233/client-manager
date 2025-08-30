@@ -21,7 +21,7 @@
   import '@wangeditor/editor/dist/css/style.css'
   import { onBeforeUnmount, onMounted, shallowRef, computed } from 'vue'
   import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
-  import { useUserStore } from '@/store/modules/user'
+  // import { useUserStore } from '@/store/modules/user'  // 已禁用用户认证
   import { ElMessage } from 'element-plus'
   import EmojiText from '@/utils/ui/emojo'
   import { IDomEditor, IToolbarConfig, IEditorConfig } from '@wangeditor/editor'
@@ -61,7 +61,7 @@
 
   // 编辑器实例
   const editorRef = shallowRef<IDomEditor>()
-  const userStore = useUserStore()
+  // const userStore = useUserStore()  // 已禁用用户认证
 
   // 常量配置
   const DEFAULT_UPLOAD_CONFIG = {
@@ -142,7 +142,7 @@
         allowedFileTypes: mergedUploadConfig.value.allowedFileTypes,
         server: uploadServer.value,
         headers: {
-          Authorization: userStore.accessToken
+          // Authorization: userStore.accessToken  // 已禁用认证
         },
         onSuccess() {
           ElMessage.success(`图片上传成功 ${EmojiText[200]}`)
