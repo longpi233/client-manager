@@ -1,6 +1,7 @@
 /**
  * 中药处方打印模板
  */
+import { formatAmountFromTenThousandths } from '../dataprocess'
 import {
   type PrescriptionData,
   type PrintOptions,
@@ -52,6 +53,7 @@ export const generatePrescriptionHTML = async (data: PrescriptionData): Promise<
     : '<div class="no-treatment">无处方药品</div>'
 
   const doses = data.doses || 1
+  const totalAmount = data.total_amount || 0
 
   return `
     <div class="print-header">
@@ -84,6 +86,13 @@ export const generatePrescriptionHTML = async (data: PrescriptionData): Promise<
       <div class="form-row">
         <span class="form-label">剂数：</span>
         <span class="form-value">${doses}付</span>
+        <span class="form-label">总金额：</span>
+        <span class="form-value">${formatAmountFromTenThousandths(totalAmount)}</span>
+      </div>
+
+      <div class="form-row">
+        <span class="form-label">用法：</span>
+        <span class="form-value">水煎分二次服</span>
       </div>
 
       <div class="form-row">

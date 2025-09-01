@@ -191,21 +191,6 @@
           </ElCol>
         </ElRow>
 
-        <ElRow :gutter="20">
-          <ElCol :span="24">
-            <ElFormItem label="备注" prop="note">
-              <ElInput
-                type="textarea"
-                placeholder="请输入备注"
-                v-model="form.note"
-                show-word-limit
-                maxlength="100"
-                :rows="2"
-              />
-            </ElFormItem>
-          </ElCol>
-        </ElRow>
-
         <!-- 治疗项目区域 -->
         <ElFormItem label="治疗项目">
           <div class="treatment-section">
@@ -295,12 +280,29 @@
           </div>
         </ElFormItem>
 
+        <ElRow :gutter="20">
+          <ElCol :span="24">
+            <ElFormItem label="备注" prop="note">
+              <ElInput
+                type="textarea"
+                placeholder="请输入备注"
+                v-model="form.note"
+                show-word-limit
+                maxlength="100"
+                :rows="2"
+              />
+            </ElFormItem>
+          </ElCol>
+        </ElRow>
+
         <!-- 总金额显示 -->
         <ElRow :gutter="20">
           <ElCol :span="24">
             <div class="total-amount">
               <span class="total-label">总金额：</span>
-              <span class="total-value">¥{{ totalAmount }}</span>
+              <span class="total-value"
+                >¥{{ convertTenThousandthsToYuan(totalTenThousandthsAmount) }}</span
+              >
             </div>
           </ElCol>
         </ElRow>
@@ -356,7 +358,7 @@
   import { Plus } from '@element-plus/icons-vue'
   import { getInstitutionInfo } from '@/api/institutionApi'
   import { getHealingList } from '@/api/healingApi'
-  import { createMedicalRecordLegacy } from '@/api/unifiedMedicalRecordApi'
+  import { createMedicalRecord as createMedicalRecord } from '@/api/unifiedMedicalRecordApi'
   import { GENDER_OPTIONS, TRADE_TYPE_OPTIONS } from '@/config/common'
   import {
     printMedicalRecord as printMedicalRecordTemplate,
@@ -364,6 +366,10 @@
     type MedicalRecordData,
     type FeeListData
   } from '@/utils/print'
+  import {
+    formatAmountFromTenThousandths,
+    convertTenThousandthsToYuan
+  } from '@/utils/dataprocess/format'
 
   // 移除缺失的依赖项调用
   // const { initColors } = useTheme()
@@ -570,14 +576,13 @@
   // 获取单价（显示为元）
   const getUnitPrice = (index: number): string => {
     const treatmentName = form.treatment[index]?.treatmentItem
-    if (!treatmentName) return '¥0.00'
+    if (!treatmentName) return '¥0.0000'
 
     const healingItem = healingItems.value.find((item) => item.name === treatmentName)
-    if (!healingItem) return '¥0.00'
+    if (!healingItem) return '¥0.0000'
 
-    // healingItem.price 假设是以分为单位存储，需要转换为元显示
-    const priceInYuan = healingItem.price / 100
-    return `¥${priceInYuan.toFixed(2)}`
+    // healingItem.price 假设是以万分为单位存储，需要转换为元显示
+    return formatAmountFromTenThousandths(healingItem.price)
   }
 
   // 获取项目总价（显示为元）
@@ -585,35 +590,33 @@
     const treatmentName = form.treatment[index]?.treatmentItem
     const count = form.treatment[index]?.count || 0
 
-    if (!treatmentName || !count) return '¥0.00'
+    if (!treatmentName || !count) return '¥0.0000'
 
     const healingItem = healingItems.value.find((item) => item.name === treatmentName)
-    if (!healingItem) return '¥0.00'
+    if (!healingItem) return '¥0.0000'
 
-    // healingItem.price 以分为单位，计算总价（分）
-    const totalPriceInCents = healingItem.price * count
+    // healingItem.price 以万分为单位，计算总价（万分）
+    const totalPriceInTenThousandths = healingItem.price * count
     // 转换为元显示
-    const totalPriceInYuan = totalPriceInCents / 100
-    return `¥${totalPriceInYuan.toFixed(2)}`
+    return formatAmountFromTenThousandths(totalPriceInTenThousandths)
   }
 
   // 计算总金额（显示为元）
-  const totalAmount = computed(() => {
-    let totalCents = 0
+  const totalTenThousandthsAmount = computed(() => {
+    let totalTenThousandths = 0
 
     form.treatment.forEach((item) => {
       if (item.treatmentItem && item.count) {
         const healingItem = healingItems.value.find((hi) => hi.name === item.treatmentItem)
         if (healingItem) {
-          // healingItem.price 以分为单位，乘以数量得到总价（分）
-          totalCents += healingItem.price * item.count
+          // healingItem.price 以万分为单位，乘以数量得到总价（万分）
+          totalTenThousandths += healingItem.price * item.count
         }
       }
     })
 
     // 转换为元显示
-    const totalYuan = totalCents / 100
-    return totalYuan.toFixed(2)
+    return totalTenThousandths
   })
 
   // 计算总价
@@ -624,6 +627,12 @@
 
   // 添加治疗项目
   const addTreatmentItem = () => {
+    // 检查最后一项是否完整
+    const lastItem = form.treatment[form.treatment.length - 1]
+    if (!lastItem.treatmentItem || !lastItem.count) {
+      ElMessage.warning('请先完善当前治疗项目信息')
+      return
+    }
     form.treatment.push({ treatmentItem: '', count: 1 })
   }
 
@@ -645,6 +654,12 @@
   // 提交登记
   const submitRegistration = async () => {
     if (loading.value) return
+
+    const isValid = (await formRef.value?.validate().catch(() => false)) || false
+    if (!isValid) {
+      ElMessage.warning('请完善所有必填信息后再提交')
+      return
+    }
 
     // 防止重复提交
     if (isSubmitting.value) {
@@ -703,7 +718,7 @@
       }
 
       // 调用后端API创建门诊病历 (统一API)
-      const response = await createMedicalRecordLegacy(medicalRecordData)
+      const response = await createMedicalRecord(medicalRecordData)
 
       if (response.code === 200) {
         ElMessage.success('门诊病历登记成功')
@@ -797,7 +812,7 @@
             total_price: unitPrice * item.count
           }
         }),
-        total_amount: parseFloat(totalAmount.value),
+        total_amount: totalTenThousandthsAmount.value,
         doctor_name: doctorList.value.find((doctor) => doctor.id === parseInt(form.doctorId))?.name
       }
 

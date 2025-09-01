@@ -164,7 +164,9 @@
                     </ElFormItem>
                   </ElCol>
                   <ElCol :span="4">
-                    <div class="price-display">{{ getUnitPrice(index) }}</div>
+                    <div class="price-display">{{
+                      formatAmountFromTenThousandths(getUnitPriceTenThousandths(item.medicineName))
+                    }}</div>
                   </ElCol>
                   <ElCol :span="4">
                     <ElFormItem
@@ -185,7 +187,11 @@
                     </ElFormItem>
                   </ElCol>
                   <ElCol :span="4">
-                    <div class="price-display">{{ getItemTotalPrice(index) }}</div>
+                    <div class="price-display">{{
+                      formatAmountFromTenThousandths(
+                        getUnitPriceTenThousandths(item.medicineName) * item.grams
+                      )
+                    }}</div>
                   </ElCol>
                   <ElCol :span="4">
                     <div class="action-button-wrapper">
@@ -231,9 +237,13 @@
           <ElCol :span="16">
             <div class="total-amount">
               <span class="total-label">单付金额：</span>
-              <span class="total-value">¥{{ singleDoseAmount }}</span>
+              <span class="total-value">{{
+                formatAmountFromTenThousandths(singleDoseAmountTenThousandths)
+              }}</span>
               <span class="total-label" style="margin-left: 20px">总金额：</span>
-              <span class="total-value">¥{{ totalAmount }}</span>
+              <span class="total-value">{{
+                formatAmountFromTenThousandths(totalAmountTenThousandths)
+              }}</span>
             </div>
           </ElCol>
         </ElRow>
@@ -259,7 +269,7 @@
                 提交登记
               </ElButton>
               <ElButton type="success" @click="printPrescription" plain> 生成中药处方 </ElButton>
-              <ElButton type="warning" @click="printFeeList" plain> 生成费用清单 </ElButton>
+              <!-- <ElButton type="warning" @click="printFeeList" plain> 生成费用清单 </ElButton> -->
             </div>
           </ElCol>
         </ElRow>
@@ -293,10 +303,14 @@
   import { GENDER_OPTIONS, TRADE_TYPE_OPTIONS } from '@/config/common'
   import {
     printPrescription as printPrescriptionTemplate,
-    printFeeList as printFeeListTemplate,
-    type PrescriptionData,
-    type FeeListData
+    // printFeeList as printFeeListTemplate,
+    type PrescriptionData
+    // type FeeListData
   } from '@/utils/print'
+  import {
+    formatAmountFromTenThousandths
+    // convertTenThousandthsToYuan
+  } from '@/utils/dataprocess/format'
 
   // 表单数据
   interface PrescriptionFormItem {
@@ -398,27 +412,27 @@
           {
             id: 1,
             name: '人参',
-            price: 50 // 0.5元 = 50分
+            price: 5000 // 0.5元 = 5000万分
           },
           {
             id: 2,
             name: '当归',
-            price: 30 // 0.3元 = 30分
+            price: 3000 // 0.3元 = 3000万分
           },
           {
             id: 3,
             name: '黄芪',
-            price: 20 // 0.2元 = 20分
+            price: 2000 // 0.2元 = 2000万分
           },
           {
             id: 4,
             name: '川芎',
-            price: 25 // 0.25元 = 25分
+            price: 2500 // 0.25元 = 2500万分
           },
           {
             id: 5,
             name: '白芍',
-            price: 40 // 0.4元 = 40分
+            price: 4000 // 0.4元 = 4000万分
           }
         ]
         chineseMedicines.value = mockChineseMedicines
@@ -431,27 +445,27 @@
         {
           id: 1,
           name: '人参',
-          price: 50 // 0.5元 = 50分
+          price: 5000 // 0.5元 = 5000万分
         },
         {
           id: 2,
           name: '当归',
-          price: 30 // 0.3元 = 30分
+          price: 3000 // 0.3元 = 3000万分
         },
         {
           id: 3,
           name: '黄芪',
-          price: 20 // 0.2元 = 20分
+          price: 2000 // 0.2元 = 2000万分
         },
         {
           id: 4,
           name: '川芎',
-          price: 25 // 0.25元 = 25分
+          price: 2500 // 0.25元 = 2500万分
         },
         {
           id: 5,
           name: '白芍',
-          price: 40 // 0.4元 = 40分
+          price: 4000 // 0.4元 = 4000万分
         }
       ]
       chineseMedicines.value = mockChineseMedicines
@@ -494,61 +508,50 @@
     calculateTotalPrice()
   }
 
-  // 获取单价（显示为元）
-  const getUnitPrice = (index: number): string => {
-    const medicineName = form.prescription[index]?.medicineName
-    if (!medicineName) return '¥0.00'
+  // 获取单价
+  const getUnitPriceTenThousandths = (medicineName: string): number => {
+    if (!medicineName) return 0
 
     const medicine = chineseMedicines.value.find((item) => item.name === medicineName)
-    if (!medicine) return '¥0.00'
+    if (!medicine) return 0
 
-    // medicine.price 假设以分为单位存储，转换为元显示
-    const priceInYuan = medicine.price / 100
-    return `¥${priceInYuan.toFixed(2)}`
+    // medicine.price 以万分为单位存储
+    return medicine.price
   }
 
-  // 获取项目总价（显示为元）
-  const getItemTotalPrice = (index: number): string => {
-    const medicineName = form.prescription[index]?.medicineName
-    const grams = form.prescription[index]?.grams || 0
+  // // 获取项目总价（显示为元）
+  // const getItemTotalPrice = (index: number): string => {
+  //   const medicineName = form.prescription[index]?.medicineName
+  //   const grams = form.prescription[index]?.grams || 0
 
-    if (!medicineName || !grams) return '¥0.00'
+  //   if (!medicineName || !grams) return '¥0.00'
 
-    const medicine = chineseMedicines.value.find((item) => item.name === medicineName)
-    if (!medicine) return '¥0.00'
+  //   const medicine = chineseMedicines.value.find((item) => item.name === medicineName)
+  //   if (!medicine) return '¥0.00'
 
-    // medicine.price 以分为单位，计算总价（分）
-    const totalPriceInCents = medicine.price * grams
-    // 转换为元显示
-    const totalPriceInYuan = totalPriceInCents / 100
-    return `¥${totalPriceInYuan.toFixed(2)}`
-  }
+  //   // medicine.price 以万分为单位，计算总价（万分）
+  //   const totalPriceInTenThousandths = medicine.price * grams
+  //   // 转换为元显示
+  //   return formatAmountFromTenThousandths(totalPriceInTenThousandths)
+  // }
 
   // 计算单付金额（显示为元）
-  const singleDoseAmount = computed(() => {
-    let totalCents = 0
+  const singleDoseAmountTenThousandths = computed(() => {
+    let totalTenThousandths = 0
 
     form.prescription.forEach((item) => {
-      if (item.medicineName && item.grams) {
-        const medicine = chineseMedicines.value.find((med) => med.name === item.medicineName)
-        if (medicine) {
-          // medicine.price 以分为单位，乘以克数得到总价（分）
-          totalCents += medicine.price * item.grams
-        }
+      const unitPrice = getUnitPriceTenThousandths(item.medicineName)
+      if (unitPrice && item.grams) {
+        totalTenThousandths += unitPrice * item.grams
       }
     })
 
-    // 转换为元显示
-    const totalYuan = totalCents / 100
-    return totalYuan.toFixed(2)
+    return totalTenThousandths
   })
 
-  // 计算总金额（显示为元）
-  const totalAmount = computed(() => {
-    const singleAmountInYuan = parseFloat(singleDoseAmount.value)
-    const doses = form.doses || 1
-    const totalInYuan = singleAmountInYuan * doses
-    return totalInYuan.toFixed(2)
+  // 计算总金额
+  const totalAmountTenThousandths = computed(() => {
+    return singleDoseAmountTenThousandths.value * (form.doses || 1)
   })
 
   // 计算总价
@@ -559,6 +562,11 @@
 
   // 添加中药项目
   const addPrescriptionItem = () => {
+    const lastItem = form.prescription[form.prescription.length - 1]
+    if (!lastItem.medicineName || !lastItem.grams) {
+      ElMessage.warning('请先完善当前中药项目信息')
+      return
+    }
     form.prescription.push({ medicineName: '', grams: 10 })
   }
 
@@ -581,6 +589,12 @@
   // 提交登记
   const submitRegistration = async () => {
     if (loading.value || isSubmitting.value) return
+
+    const isValid = (await formRef.value?.validate().catch(() => false)) || false
+    if (!isValid) {
+      ElMessage.warning('请完善所有必填信息后再提交')
+      return
+    }
 
     // 重复提交确认
     if (isSubmitting.value) {
@@ -612,20 +626,19 @@
         telephone: form.telephone,
         diagnosis: form.diagnosis,
         prescription_items: form.prescription.map((item) => {
-          const medicine = chineseMedicines.value.find((med) => med.name === item.medicineName)
-          const unitPrice = medicine ? medicine.price : 0 // 价格以分为单位
-          const totalPrice = Math.round(unitPrice * item.grams) // 使用 Math.round 避免浮点精度问题
+          const unitPrice = getUnitPriceTenThousandths(item.medicineName)
+          const totalPrice = Math.round(unitPrice * item.grams)
           return {
             medicine_name: item.medicineName,
             grams: item.grams,
-            unit_price: Math.round(unitPrice), // 确保是整数
-            total_price: totalPrice // 总价(分)
+            unit_price: unitPrice, // 单价(万分)
+            total_price: totalPrice // 总价(万分)
           }
         }),
         doses: form.doses!,
-        // 计算单付金额和总金额（以分为单位），使用 Math.round 避免浮点精度问题
-        single_dose_amount: Math.round(parseFloat(singleDoseAmount.value) * 100), // 转换为分
-        total_amount: Math.round(parseFloat(totalAmount.value) * 100), // 转换为分
+        // 计算单付金额和总金额（以万分为单位），使用 convertYuanToTenThousandths 避免浮点精度问题
+        single_dose_amount: singleDoseAmountTenThousandths.value, // 转换为万分
+        total_amount: totalAmountTenThousandths.value, // 转换为万分
         time_of_visit:
           form.timeOfVisit instanceof Date
             ? form.timeOfVisit.toISOString().slice(0, 19).replace('T', ' ')
@@ -681,20 +694,17 @@
         diagnosis: form.diagnosis,
         note: form.note,
         prescription_items: form.prescription.map((item) => {
-          const medicine = filteredChineseMedicines.value.find((m) => m.name === item.medicineName)
-          const unitPriceInCents = medicine ? medicine.price : 0 // 价格以分为单位
-          const unitPriceInYuan = unitPriceInCents / 100 // 转换为元
-          const totalPriceInYuan = unitPriceInYuan * item.grams // 总价(元)
+          const unitPriceInTenThousandths = getUnitPriceTenThousandths(item.medicineName) // 价格以万分为单位
           return {
             medicine_name: item.medicineName,
             grams: item.grams,
-            unit_price: unitPriceInYuan, // 打印时使用元
-            total_price: totalPriceInYuan // 打印时使用元
+            unit_price: unitPriceInTenThousandths, // 价格以万分为单位
+            total_price: unitPriceInTenThousandths * item.grams // 价格以万分为单位
           }
         }),
         doses: form.doses || 1,
-        single_dose_amount: parseFloat(singleDoseAmount.value),
-        total_amount: parseFloat(totalAmount.value),
+        single_dose_amount: singleDoseAmountTenThousandths.value,
+        total_amount: totalAmountTenThousandths.value,
         doctor_name: doctorList.value.find((doctor) => doctor.id === parseInt(form.doctorId))?.name
       }
 
@@ -707,46 +717,44 @@
   }
 
   // 生成费用清单（打印功能）
-  const printFeeList = async () => {
-    try {
-      await formRef.value?.validate()
+  // const printFeeList = async () => {
+  //   try {
+  //     await formRef.value?.validate()
 
-      // 构建费用清单打印数据
-      const feeListData: FeeListData = {
-        customer_name: form.customerName,
-        gender: form.gender,
-        age: form.age || 0,
-        telephone: form.telephone,
-        time_of_visit:
-          typeof form.timeOfVisit === 'string'
-            ? form.timeOfVisit
-            : form.timeOfVisit.toISOString().slice(0, 19).replace('T', ' '),
-        trade_type: form.tradeType,
-        diagnosis: form.diagnosis,
-        note: form.note,
-        treatment_items: form.prescription.map((item) => {
-          const medicine = filteredChineseMedicines.value.find((m) => m.name === item.medicineName)
-          const unitPriceInCents = medicine ? medicine.price : 0 // 价格以分为单位
-          const unitPriceInYuan = unitPriceInCents / 100 // 转换为元
-          const singleTotalInYuan = unitPriceInYuan * item.grams // 单付总价(元)
-          return {
-            treatment_item: `${item.medicineName} (${item.grams}g)`,
-            count: form.doses || 1,
-            unit_price: singleTotalInYuan, // 单付价格(元)
-            total_price: singleTotalInYuan * (form.doses || 1) // 总价格(元)
-          }
-        }),
-        total_amount: parseFloat(totalAmount.value),
-        doctor_name: doctorList.value.find((doctor) => doctor.id === parseInt(form.doctorId))?.name
-      }
+  //     // 构建费用清单打印数据
+  //     const feeListData: FeeListData = {
+  //       customer_name: form.customerName,
+  //       gender: form.gender,
+  //       age: form.age || 0,
+  //       telephone: form.telephone,
+  //       time_of_visit:
+  //         typeof form.timeOfVisit === 'string'
+  //           ? form.timeOfVisit
+  //           : form.timeOfVisit.toISOString().slice(0, 19).replace('T', ' '),
+  //       trade_type: form.tradeType,
+  //       diagnosis: form.diagnosis,
+  //       note: form.note,
+  //       treatment_items: form.prescription.map((item) => {
+  //         const unitPriceInTenThousandths = getUnitPriceTenThousandths(item.medicineName) // 价格以万分为单位
+  //         const singleTotalInYuanTenThousandths = unitPriceInTenThousandths * item.grams // 单付总价(元)
+  //         return {
+  //           treatment_item: `${item.medicineName} (${item.grams}g)`,
+  //           count: form.doses || 1,
+  //           unit_price: singleTotalInYuanTenThousandths, // 单付价格(元)
+  //           total_price: singleTotalInYuanTenThousandths * (form.doses || 1) // 总价格(元)
+  //         }
+  //       }),
+  //       total_amount: totalAmountTenThousandths.value,
+  //       doctor_name: doctorList.value.find((doctor) => doctor.id === parseInt(form.doctorId))?.name
+  //     }
 
-      printFeeListTemplate(feeListData)
-      ElMessage.success('费用清单打印成功')
-    } catch (error) {
-      console.error('打印费用清单失败:', error)
-      ElMessage.error('请先完善必填信息')
-    }
-  }
+  //     printFeeListTemplate(feeListData)
+  //     ElMessage.success('费用清单打印成功')
+  //   } catch (error) {
+  //     console.error('打印费用清单失败:', error)
+  //     ElMessage.error('请先完善必填信息')
+  //   }
+  // }
 
   // 初始化
   onMounted(() => {

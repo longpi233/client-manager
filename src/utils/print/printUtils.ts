@@ -89,33 +89,33 @@ export const formatDateTime = (dateTime: string | Date): string => {
   return date.toLocaleString('zh-CN', {
     year: 'numeric',
     month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
+    day: '2-digit'
+    // hour: '2-digit',
+    // minute: '2-digit'
   })
 }
 
 /**
- * 格式化金额（从分转为元显示）
+ * 格式化金额（从万分转为元显示）
  */
-export const formatAmount = (cents: number): string => {
-  if (!cents || cents === 0) return '¥0.00'
-  if (isNaN(cents)) return '¥0.00'
+export const formatAmount = (tenThousandths: number): string => {
+  if (!tenThousandths || tenThousandths === 0) return '¥0.0000'
+  if (isNaN(tenThousandths)) return '¥0.0000'
 
-  // 分转元：除以100
-  const yuan = cents / 100
-  return `¥${yuan.toFixed(2)}`
+  // 万分转元：除以10000
+  const yuan = tenThousandths / 10000
+  return `¥${yuan.toFixed(4)}`
 }
 
 /**
- * 元转分（用于前端计算）
+ * 元转万分（用于前端计算）
  */
-export const convertYuanToCents = (yuan: number): number => {
+export const convertYuanToTenThousandths = (yuan: number): number => {
   if (!yuan || yuan === 0) return 0
   if (isNaN(yuan)) return 0
 
-  // 元转分：乘以100并四舍五入
-  return Math.round(yuan * 100)
+  // 元转万分：乘以10000并四舍五入
+  return Math.round(yuan * 10000)
 }
 
 /**

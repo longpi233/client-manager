@@ -8,7 +8,7 @@ export enum RecordType {
 
 export interface MedicalRecord {
   id?: number
-  record_type: string
+  record_type: RecordType
   customer_name: string
   gender: string
   age: number
@@ -107,6 +107,30 @@ export interface QueryMedicalRecordsParams {
   min_age?: number
   max_age?: number
   trade_type?: string
+  /** 医师ID */
+  doctor_id?: number
+  /** 医师姓名 */
+  doctor_name?: string
+  /** 主诉（门诊病历） */
+  chief_complaint?: string
+  /** 病史（门诊病历） */
+  illness_history?: string
+  /** 体格检查（门诊病历） */
+  physical_examination?: string
+  /** 既往史（门诊病历） */
+  past_history?: string
+  /** 实验室检查（门诊病历） */
+  laboratory_examination?: string
+  /** 治疗方法（门诊病历） */
+  treatment_method?: string
+  /** 付数（中药处方） */
+  doses?: number
+  /** 最小总金额 */
+  min_amount?: number
+  /** 最大总金额 */
+  max_amount?: number
+  /** 备注 */
+  note?: string
 }
 
 export interface PagedMedicalRecords {
@@ -150,7 +174,7 @@ export function createCustomerRecord(
   return createUnifiedMedicalRecord({ ...params, record_type: RecordType.Customer })
 }
 
-export function createMedicalRecordLegacy(
+export function createMedicalRecord(
   params: Omit<CreateMedicalRecordParams, 'record_type'>
 ): Promise<ApiResponse<number>> {
   return createUnifiedMedicalRecord({ ...params, record_type: RecordType.Medical })

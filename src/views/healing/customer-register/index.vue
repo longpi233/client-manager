@@ -247,6 +247,10 @@
   import { createCustomerRecord } from '@/api/unifiedMedicalRecordApi'
   import { getHealingList } from '@/api/healingApi'
   import { GENDER_OPTIONS, TRADE_TYPE_OPTIONS } from '@/config/common'
+  import {
+    formatAmountFromTenThousandths,
+    convertTenThousandthsToYuan
+  } from '@/utils/dataprocess/format'
 
   // 前端表单数据接口
   interface CustomerForm {
@@ -382,9 +386,8 @@
     const item = healingItems.value.find((item) => item.name === itemName)
     if (!item) return '-'
 
-    // item.price 假设以分为单位存储，转换为元显示
-    const priceInYuan = item.price / 100
-    return `¥${priceInYuan.toFixed(2)}`
+    // item.price 假设以万分为单位存储，转换为元显示
+    return formatAmountFromTenThousandths(item.price)
   }
 
   // 获取项目总价（显示为元）
@@ -397,30 +400,28 @@
     const item = healingItems.value.find((item) => item.name === itemName)
     if (!item) return '-'
 
-    // item.price 以分为单位，计算总价（分）
-    const totalPriceInCents = item.price * count
+    // item.price 以万分为单位，计算总价（万分）
+    const totalPriceInTenThousandths = item.price * count
     // 转换为元显示
-    const totalPriceInYuan = totalPriceInCents / 100
-    return `¥${totalPriceInYuan.toFixed(2)}`
+    return formatAmountFromTenThousandths(totalPriceInTenThousandths)
   }
 
   // 计算总金额（显示为元）
   const totalAmount = computed(() => {
-    let totalCents = 0
+    let totalTenThousandths = 0
 
     form.value.treatment.forEach((treatmentItem) => {
       if (treatmentItem.treatmentItem && treatmentItem.count) {
         const item = healingItems.value.find((item) => item.name === treatmentItem.treatmentItem)
         if (item) {
-          // item.price 以分为单位，乘以数量得到总价（分）
-          totalCents += item.price * treatmentItem.count
+          // item.price 以万分为单位，乘以数量得到总价（万分）
+          totalTenThousandths += item.price * treatmentItem.count
         }
       }
     })
 
     // 转换为元显示
-    const totalYuan = totalCents / 100
-    return totalYuan.toFixed(2)
+    return convertTenThousandthsToYuan(totalTenThousandths).toFixed(4)
   })
 
   // 处理治疗项目变更
@@ -485,6 +486,12 @@
   const submitForm = async () => {
     if (!formRef.value) return
 
+    const isValid = await formRef.value.validate().catch(() => false)
+    if (!isValid) {
+      ElMessage.warning('请完善所有必填信息后再提交')
+      return
+    }
+
     // 防止重复提交
     if (isSubmitting.value) {
       // 二次确认
@@ -501,12 +508,6 @@
       if (!confirmed) {
         return
       }
-    }
-
-    const isValid = await formRef.value.validate().catch(() => false)
-    if (!isValid) {
-      ElMessage.warning('请检查表单填写是否正确')
-      return
     }
 
     // 验证治疗项目

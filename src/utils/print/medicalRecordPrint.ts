@@ -102,6 +102,11 @@ export const generateMedicalRecordHTML = async (data: MedicalRecordData): Promis
       </div>
 
       <div class="form-row">
+        <span class="form-label">备注：</span>
+        <span class="form-value">${data.note || ''}</span>
+      </div>
+
+      <div class="form-row">
         <span class="form-label">医师：</span>
         <span class="form-value">${data.doctor_name || ''}</span>
         <span class="form-label">时间：</span>

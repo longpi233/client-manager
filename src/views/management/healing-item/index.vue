@@ -16,7 +16,7 @@
     <ElCard class="art-table-card" shadow="never" style="margin-top: 0">
       <template #header>
         <div class="table-header-wrapper">
-          <h4>康复项目数据表格</h4>
+          <h4>治疗项目数据表格</h4>
           <div class="table-info">
             <ElTag v-if="hasError" type="danger">{{ hasError.message }}</ElTag>
             <ElTag v-else-if="isLoading" type="warning">加载中...</ElTag>
@@ -37,7 +37,7 @@
           <div class="toolbar-left">
             <ElButton type="primary" @click="handleAdd" v-ripple>
               <ElIcon><Plus /></ElIcon>
-              新增康复项目
+              新增治疗项目
             </ElButton>
 
             <!-- 导出导入功能 -->
@@ -189,7 +189,10 @@
   import { ACCOUNT_TABLE_DATA } from '@/mock/temp/formData'
   import type { SearchFormItem } from '@/types'
   import type { FormInstance, FormRules } from 'element-plus'
-  import { convertYuanToCents, convertCentsToYuan } from '@/utils/dataprocess/format'
+  import {
+    convertYuanToTenThousandths,
+    convertTenThousandthsToYuan
+  } from '@/utils/dataprocess/format'
 
   defineOptions({ name: 'AdvancedTableDemo' })
 
@@ -344,7 +347,7 @@
           label: '单价（元）',
           sortable: true,
           width: 120,
-          formatter: (row) => `¥${convertCentsToYuan(row.price).toFixed(2)}` // 将分转换为元显示
+          formatter: (row) => `¥${convertTenThousandthsToYuan(row.price).toFixed(4)}` // 将万分转换为元显示
         },
         {
           prop: 'operation',
@@ -513,7 +516,7 @@
       const newItem: Api.Healing.CreateParams = {
         name: '新增康复项目',
         description: '',
-        price: convertYuanToCents(1) // 默认1元，转换为分
+        price: convertYuanToTenThousandths(1) // 默认1元，转换为分
       }
 
       const response = await healingApi.createHealingItem(newItem)
@@ -534,7 +537,7 @@
     editForm.value = {
       name: row.name,
       description: row.description || '',
-      price: convertCentsToYuan(row.price) // 将分转换为元显示
+      price: convertTenThousandthsToYuan(row.price) // 将分转换为元显示
     }
     editDialogVisible.value = true
   }
@@ -568,7 +571,7 @@
         id: currentEditingItem.value.id,
         name: editForm.value.name,
         description: editForm.value.description,
-        price: convertYuanToCents(editForm.value.price) // 将元转换为分
+        price: convertYuanToTenThousandths(editForm.value.price) // 将元转换为分
       }
 
       const response = await healingApi.updateHealingItem(updateParams)

@@ -2,13 +2,14 @@
  * 医疗系统专用格式化工具函数
  */
 
+import { RecordType } from '@/api/unifiedMedicalRecordApi'
 import {
   formatDateTime as baseFormatDateTime,
   formatGender as baseFormatGender,
   formatAmount as baseFormatAmount,
-  formatAmountFromCents,
-  convertYuanToCents,
-  convertCentsToYuan
+  formatAmountFromTenThousandths,
+  convertYuanToTenThousandths,
+  convertTenThousandthsToYuan
 } from './format'
 import {
   GenderMap,
@@ -26,9 +27,9 @@ export {
   baseFormatDateTime as formatDateTime,
   baseFormatGender as formatGender,
   baseFormatAmount as formatAmount,
-  formatAmountFromCents,
-  convertYuanToCents,
-  convertCentsToYuan
+  formatAmountFromTenThousandths,
+  convertYuanToTenThousandths,
+  convertTenThousandthsToYuan
 }
 
 /**
@@ -90,9 +91,9 @@ export function getTradeTypeName(type: string): string {
  * @param type 数据类型值
  * @returns 数据类型中文名称
  */
-export function getDataTypeName(type: string): string {
+export function getDataTypeName(type: RecordType): string {
   if (!type) return '-'
-  return DataTypeMap[type as keyof typeof DataTypeMap] || type
+  return DataTypeMap[type] || type
 }
 
 /**

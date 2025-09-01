@@ -1,7 +1,7 @@
 use crate::modules::database::get_database;
 use crate::modules::types::{
-    ApiResponse, MedicalRecord, PrescriptionFormItem, PrescriptionItemRecord,
-    TreatmentItemRecord, LegacyTreatmentItem,
+    ApiResponse, LegacyTreatmentItem, MedicalRecord, PrescriptionFormItem, PrescriptionItemRecord,
+    TreatmentItemRecord,
 };
 use chrono::Utc;
 use rusqlite::params;
@@ -20,7 +20,7 @@ pub struct CreateMedicalRecordParams {
     pub trade_type: String,
     pub diagnosis: String,
     pub note: Option<String>,
-    
+
     // 门诊病历特有字段
     pub chief_complaint: Option<String>,
     pub illness_history: Option<String>,
@@ -28,18 +28,18 @@ pub struct CreateMedicalRecordParams {
     pub past_history: Option<String>,
     pub laboratory_examination: Option<String>,
     pub treatment_method: Option<String>,
-    
+
     // 中药处方特有字段
     pub doses: Option<i32>,
     pub single_dose_amount: Option<i64>, // 单付金额（以分为单位）
     pub total_amount: Option<i64>,       // 总金额（以分为单位）
-    
+
     // 治疗项目 (散客登记和门诊病历使用)
     pub treatment_items: Option<Vec<LegacyTreatmentItem>>,
-    
+
     // 中药处方项目 (中药处方使用)
     pub prescription_items: Option<Vec<PrescriptionFormItem>>,
-    
+
     pub doctor_id: Option<i32>,
     pub doctor_name: Option<String>,
 }
@@ -59,6 +59,19 @@ pub struct QueryMedicalRecordsParams {
     pub min_age: Option<i32>,
     pub max_age: Option<i32>,
     pub trade_type: Option<String>,
+    // 新增搜索参数
+    pub doctor_id: Option<i32>,
+    pub doctor_name: Option<String>,
+    pub chief_complaint: Option<String>,
+    pub illness_history: Option<String>,
+    pub physical_examination: Option<String>,
+    pub past_history: Option<String>,
+    pub laboratory_examination: Option<String>,
+    pub treatment_method: Option<String>,
+    pub doses: Option<i32>,
+    pub min_amount: Option<i64>,
+    pub max_amount: Option<i64>,
+    pub note: Option<String>,
 }
 
 // 分页查询结果
@@ -72,7 +85,10 @@ pub struct PagedMedicalRecords {
 
 // 创建医疗记录 (统一接口)
 #[command]
-pub async fn create_unified_medical_record(params: CreateMedicalRecordParams) -> Result<ApiResponse<i32>, String> {
+pub async fn create_unified_medical_record(
+    params: CreateMedicalRecordParams,
+) -> Result<ApiResponse<i32>, String> {
+    println!("Creating medical record: {:?}", params);
     let db = get_database();
     let conn = db.get_connection();
     let now = Utc::now().format("%Y-%m-%d %H:%M:%S").to_string();
@@ -84,7 +100,7 @@ pub async fn create_unified_medical_record(params: CreateMedicalRecordParams) ->
     } else {
         // 回退到计算逻辑
         let mut calculated_total: i64 = 0;
-        
+
         if let Some(treatment_items) = &params.treatment_items {
             for item in treatment_items {
                 if let Some(total_price) = item.total_price {
@@ -92,7 +108,7 @@ pub async fn create_unified_medical_record(params: CreateMedicalRecordParams) ->
                 }
             }
         }
-        
+
         if let Some(prescription_items) = &params.prescription_items {
             for item in prescription_items {
                 if let Some(total_price) = item.total_price {
@@ -109,16 +125,17 @@ pub async fn create_unified_medical_record(params: CreateMedicalRecordParams) ->
                     calculated_total += (unit_price as f64 * item.grams) as i64;
                 }
             }
-            
+
             // 如果是中药处方，需要乘以付数
             if let Some(doses) = params.doses {
                 calculated_total *= doses as i64;
             }
         }
-        
+
         calculated_total
     };
 
+    println!("Calculated total amount: {}", total_amount);
     // 插入主记录
     let result = conn.execute(
         "INSERT INTO medical_records (
@@ -168,9 +185,9 @@ pub async fn create_unified_medical_record(params: CreateMedicalRecordParams) ->
             // 插入治疗项目记录
             if let Some(treatment_items) = params.treatment_items {
                 for item in treatment_items {
-                    let unit_price = item.unit_price.unwrap_or(0);  // 使用0而不是0.0
+                    let unit_price = item.unit_price.unwrap_or(0); // 使用0而不是0.0
                     let total_price = unit_price * item.count as i64; // 计算总价（分）
-                    
+
                     conn.execute(
                         "INSERT INTO medical_treatment_items (
                             medical_record_id, treatment_item_name, treatment_count, 
@@ -184,7 +201,8 @@ pub async fn create_unified_medical_record(params: CreateMedicalRecordParams) ->
                             total_price,
                             now
                         ],
-                    ).map_err(|e| format!("插入治疗项目失败: {}", e))?;
+                    )
+                    .map_err(|e| format!("插入治疗项目失败: {}", e))?;
                 }
             }
 
@@ -192,7 +210,9 @@ pub async fn create_unified_medical_record(params: CreateMedicalRecordParams) ->
             if let Some(prescription_items) = params.prescription_items {
                 for item in prescription_items {
                     // 优先使用前端传递的价格数据（以分为单位）
-                    let (unit_price, total_price) = if let (Some(up), Some(tp)) = (item.unit_price, item.total_price) {
+                    let (unit_price, total_price) = if let (Some(up), Some(tp)) =
+                        (item.unit_price, item.total_price)
+                    {
                         (up, tp) // 直接使用，已经是分为单位
                     } else {
                         // 回退到查询数据库
@@ -203,10 +223,11 @@ pub async fn create_unified_medical_record(params: CreateMedicalRecordParams) ->
                                 |row| row.get(0)
                             )
                             .unwrap_or(0); // 数据库中存储的就是分为单位
-                        let calculated_total_price = (queried_unit_price as f64 * item.grams) as i64;
+                        let calculated_total_price =
+                            (queried_unit_price as f64 * item.grams) as i64;
                         (queried_unit_price, calculated_total_price)
                     };
-                    
+
                     conn.execute(
                         "INSERT INTO medical_prescription_items (
                             medical_record_id, medicine_name, grams, 
@@ -220,7 +241,8 @@ pub async fn create_unified_medical_record(params: CreateMedicalRecordParams) ->
                             total_price,
                             now
                         ],
-                    ).map_err(|e| format!("插入中药项目失败: {}", e))?;
+                    )
+                    .map_err(|e| format!("插入中药项目失败: {}", e))?;
                 }
             }
 
@@ -236,7 +258,9 @@ pub async fn create_unified_medical_record(params: CreateMedicalRecordParams) ->
 
 // 查询医疗记录列表 (统一接口)
 #[command]
-pub async fn get_unified_medical_record_list(params: QueryMedicalRecordsParams) -> Result<ApiResponse<PagedMedicalRecords>, String> {
+pub async fn get_unified_medical_record_list(
+    params: QueryMedicalRecordsParams,
+) -> Result<ApiResponse<PagedMedicalRecords>, String> {
     let db = get_database();
     let conn = db.get_connection();
 
@@ -308,14 +332,96 @@ pub async fn get_unified_medical_record_list(params: QueryMedicalRecordsParams) 
         }
     }
 
+    // 新增搜索参数
+    if let Some(doctor_id) = params.doctor_id {
+        where_clauses.push("doctor_id = ?".to_string());
+        query_params.push(doctor_id.to_string());
+    }
+
+    if let Some(doctor_name) = &params.doctor_name {
+        if !doctor_name.is_empty() {
+            where_clauses.push("doctor_name LIKE ?".to_string());
+            query_params.push(format!("%{}%", doctor_name));
+        }
+    }
+
+    if let Some(chief_complaint) = &params.chief_complaint {
+        if !chief_complaint.is_empty() {
+            where_clauses.push("chief_complaint LIKE ?".to_string());
+            query_params.push(format!("%{}%", chief_complaint));
+        }
+    }
+
+    if let Some(illness_history) = &params.illness_history {
+        if !illness_history.is_empty() {
+            where_clauses.push("illness_history LIKE ?".to_string());
+            query_params.push(format!("%{}%", illness_history));
+        }
+    }
+
+    if let Some(physical_examination) = &params.physical_examination {
+        if !physical_examination.is_empty() {
+            where_clauses.push("physical_examination LIKE ?".to_string());
+            query_params.push(format!("%{}%", physical_examination));
+        }
+    }
+
+    if let Some(past_history) = &params.past_history {
+        if !past_history.is_empty() {
+            where_clauses.push("past_history LIKE ?".to_string());
+            query_params.push(format!("%{}%", past_history));
+        }
+    }
+
+    if let Some(laboratory_examination) = &params.laboratory_examination {
+        if !laboratory_examination.is_empty() {
+            where_clauses.push("laboratory_examination LIKE ?".to_string());
+            query_params.push(format!("%{}%", laboratory_examination));
+        }
+    }
+
+    if let Some(treatment_method) = &params.treatment_method {
+        if !treatment_method.is_empty() {
+            where_clauses.push("treatment_method LIKE ?".to_string());
+            query_params.push(format!("%{}%", treatment_method));
+        }
+    }
+
+    if let Some(doses) = params.doses {
+        where_clauses.push("doses = ?".to_string());
+        query_params.push(doses.to_string());
+    }
+
+    if let Some(min_amount) = params.min_amount {
+        where_clauses.push("total_amount >= ?".to_string());
+        query_params.push(min_amount.to_string());
+    }
+
+    if let Some(max_amount) = params.max_amount {
+        where_clauses.push("total_amount <= ?".to_string());
+        query_params.push(max_amount.to_string());
+    }
+
+    if let Some(note) = &params.note {
+        if !note.is_empty() {
+            where_clauses.push("note LIKE ?".to_string());
+            query_params.push(format!("%{}%", note));
+        }
+    }
+
     let where_clause = where_clauses.join(" AND ");
 
     // 查询总数
-    let count_sql = format!("SELECT COUNT(*) FROM medical_records WHERE {}", where_clause);
+    let count_sql = format!(
+        "SELECT COUNT(*) FROM medical_records WHERE {}",
+        where_clause
+    );
     let total: i32 = conn
-        .query_row(&count_sql, rusqlite::params_from_iter(query_params.iter()), |row| {
-            row.get(0)
-        })
+        .query_row(
+            &count_sql,
+            rusqlite::params_from_iter(query_params.iter()),
+            |row| row.get(0),
+        )
         .map_err(|e| format!("查询总数失败: {}", e))?;
 
     // 查询数据
@@ -369,7 +475,7 @@ pub async fn get_unified_medical_record_list(params: QueryMedicalRecordsParams) 
                     status: row.get(21)?,
                     created_at: row.get(22)?,
                     updated_at: row.get(23)?,
-                    treatment_items: None, // 延迟加载
+                    treatment_items: None,    // 延迟加载
                     prescription_items: None, // 延迟加载
                 })
             },
@@ -385,7 +491,7 @@ pub async fn get_unified_medical_record_list(params: QueryMedicalRecordsParams) 
                     if record.record_type == "customer" || record.record_type == "medical" {
                         record.treatment_items = load_treatment_items(&conn, id).ok();
                     }
-                    
+
                     // 加载中药项目
                     if record.record_type == "prescription" {
                         record.prescription_items = load_prescription_items(&conn, id).ok();
@@ -409,7 +515,10 @@ pub async fn get_unified_medical_record_list(params: QueryMedicalRecordsParams) 
 }
 
 // 加载治疗项目
-fn load_treatment_items(conn: &rusqlite::Connection, medical_record_id: i32) -> Result<Vec<TreatmentItemRecord>, rusqlite::Error> {
+fn load_treatment_items(
+    conn: &rusqlite::Connection,
+    medical_record_id: i32,
+) -> Result<Vec<TreatmentItemRecord>, rusqlite::Error> {
     let mut stmt = conn.prepare(
         "SELECT id, medical_record_id, treatment_item_name, treatment_count, unit_price, total_price, created_at 
          FROM medical_treatment_items 
@@ -435,12 +544,15 @@ fn load_treatment_items(conn: &rusqlite::Connection, medical_record_id: i32) -> 
 }
 
 // 加载中药项目
-fn load_prescription_items(conn: &rusqlite::Connection, medical_record_id: i32) -> Result<Vec<PrescriptionItemRecord>, rusqlite::Error> {
+fn load_prescription_items(
+    conn: &rusqlite::Connection,
+    medical_record_id: i32,
+) -> Result<Vec<PrescriptionItemRecord>, rusqlite::Error> {
     let mut stmt = conn.prepare(
         "SELECT id, medical_record_id, medicine_name, grams, unit_price, total_price, created_at 
          FROM medical_prescription_items 
          WHERE medical_record_id = ? 
-         ORDER BY id"
+         ORDER BY id",
     )?;
 
     let items: Result<Vec<PrescriptionItemRecord>, _> = stmt
@@ -462,7 +574,9 @@ fn load_prescription_items(conn: &rusqlite::Connection, medical_record_id: i32) 
 
 // 根据ID获取医疗记录详情
 #[command]
-pub async fn get_unified_medical_record_detail(id: i32) -> Result<ApiResponse<MedicalRecord>, String> {
+pub async fn get_unified_medical_record_detail(
+    id: i32,
+) -> Result<ApiResponse<MedicalRecord>, String> {
     let db = get_database();
     let conn = db.get_connection();
 
@@ -510,7 +624,7 @@ pub async fn get_unified_medical_record_detail(id: i32) -> Result<ApiResponse<Me
             if record.record_type == "customer" || record.record_type == "medical" {
                 record.treatment_items = load_treatment_items(&conn, id).ok();
             }
-            
+
             if record.record_type == "prescription" {
                 record.prescription_items = load_prescription_items(&conn, id).ok();
             }
@@ -532,7 +646,9 @@ pub async fn delete_unified_medical_record(id: i32) -> Result<ApiResponse<bool>,
     let conn = db.get_connection();
 
     // 开始事务
-    let tx = conn.unchecked_transaction().map_err(|e| format!("开始事务失败: {}", e))?;
+    let tx = conn
+        .unchecked_transaction()
+        .map_err(|e| format!("开始事务失败: {}", e))?;
 
     // 删除关联的治疗项目
     if let Err(e) = tx.execute(
@@ -551,10 +667,7 @@ pub async fn delete_unified_medical_record(id: i32) -> Result<ApiResponse<bool>,
     }
 
     // 删除医疗记录主表
-    let result = tx.execute(
-        "DELETE FROM medical_records WHERE id = ?",
-        params![id],
-    );
+    let result = tx.execute("DELETE FROM medical_records WHERE id = ?", params![id]);
 
     match result {
         Ok(rows_affected) => {
@@ -576,7 +689,9 @@ pub async fn delete_unified_medical_record(id: i32) -> Result<ApiResponse<bool>,
 
 // 批量删除医疗记录 (统一接口)
 #[command]
-pub async fn delete_unified_medical_records_batch(ids: Vec<i32>) -> Result<ApiResponse<i32>, String> {
+pub async fn delete_unified_medical_records_batch(
+    ids: Vec<i32>,
+) -> Result<ApiResponse<i32>, String> {
     if ids.is_empty() {
         return Err("删除ID列表不能为空".to_string());
     }
@@ -585,7 +700,9 @@ pub async fn delete_unified_medical_records_batch(ids: Vec<i32>) -> Result<ApiRe
     let conn = db.get_connection();
 
     // 开始事务
-    let tx = conn.unchecked_transaction().map_err(|e| format!("开始事务失败: {}", e))?;
+    let tx = conn
+        .unchecked_transaction()
+        .map_err(|e| format!("开始事务失败: {}", e))?;
 
     let mut deleted_count = 0;
 
@@ -607,10 +724,7 @@ pub async fn delete_unified_medical_records_batch(ids: Vec<i32>) -> Result<ApiRe
         }
 
         // 删除医疗记录主表
-        match tx.execute(
-            "DELETE FROM medical_records WHERE id = ?",
-            params![id],
-        ) {
+        match tx.execute("DELETE FROM medical_records WHERE id = ?", params![id]) {
             Ok(rows_affected) => {
                 if rows_affected > 0 {
                     deleted_count += 1;

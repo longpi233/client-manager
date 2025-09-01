@@ -116,9 +116,20 @@
           <ElInputNumber
             v-model="editForm.price"
             :min="0"
+            :precision="4"
+            :step="0.01"
+            style="width: 100%"
+            @change="handlePricePerGramChange"
+          />
+        </ElFormItem>
+        <ElFormItem label="单价（元/千克）">
+          <ElInputNumber
+            v-model="editForm.pricePerKg"
+            :min="0"
             :precision="2"
             :step="1"
             style="width: 100%"
+            @change="handlePricePerKgChange"
           />
         </ElFormItem>
       </ElForm>
@@ -143,7 +154,10 @@
   import * as chineseMedicineApi from '@/api/chineseMedicineApi'
   import type { SearchFormItem } from '@/types'
   import type { FormInstance, FormRules } from 'element-plus'
-  import { convertYuanToCents, convertCentsToYuan } from '@/utils/dataprocess/format'
+  import {
+    convertYuanToTenThousandths,
+    convertTenThousandthsToYuan
+  } from '@/utils/dataprocess/format'
 
   defineOptions({ name: 'ChineseMedicineDemo' })
 
@@ -166,7 +180,8 @@
   const editForm = ref({
     name: '',
     description: '',
-    price: 0
+    price: 0, // 元/克
+    pricePerKg: 0 // 元/千克
   })
 
   // 表单验证规则
@@ -216,7 +231,7 @@
   // 导出列配置
   const exportColumns = computed(() => ({
     name: { title: '中药名称', width: 30 },
-    price: { title: '单价（元）', width: 20 }
+    price: { title: '单价（元/克）', width: 20 }
   }))
 
   // 使用 useTable Hook
@@ -274,10 +289,17 @@
         { prop: 'name', label: '中药名称', sortable: true, minWidth: 200 },
         {
           prop: 'price',
-          label: '单价（元）',
+          label: '单价（元/克）',
           sortable: true,
-          width: 120,
-          formatter: (row) => `¥${convertCentsToYuan(row.price).toFixed(2)}` // 将分转换为元显示
+          width: 140,
+          formatter: (row) => `¥${convertTenThousandthsToYuan(row.price).toFixed(4)}` // 将万分转换为元显示
+        },
+        {
+          prop: 'pricePerKg',
+          label: '单价（元/千克）',
+          sortable: true,
+          width: 140,
+          formatter: (row) => `¥${(convertTenThousandthsToYuan(row.price) * 1000).toFixed(2)}` // 元/克转换为元/千克显示
         },
         {
           prop: 'operation',
@@ -354,6 +376,27 @@
     console.log('排序事件:', sortInfo)
   }
 
+  // 价格同步处理函数
+  const handlePricePerGramChange = (value: number | undefined) => {
+    if (value !== undefined && value !== null) {
+      // 1克 = 0.001千克，所以 元/千克 = 元/克 * 1000
+      editForm.value.pricePerKg = Number((value * 1000).toFixed(2))
+    } else {
+      editForm.value.price = 0
+      editForm.value.pricePerKg = 0
+    }
+  }
+
+  const handlePricePerKgChange = (value: number | undefined) => {
+    if (value !== undefined && value !== null) {
+      // 1千克 = 1000克，所以 元/克 = 元/千克 / 1000
+      editForm.value.price = Number((value / 1000).toFixed(4))
+    } else {
+      editForm.value.price = 0
+      editForm.value.pricePerKg = 0
+    }
+  }
+
   // 搜索与重置
   const handleSearch = () => {
     console.log('搜索参数:', searchFormState.value)
@@ -391,7 +434,7 @@
       const newItem: Api.ChineseMedicine.CreateParams = {
         name: '新增中药',
         description: '',
-        price: convertYuanToCents(10) // 默认10元，转换为分
+        price: convertYuanToTenThousandths(10) // 默认10元，转换为分
       }
 
       const response = await chineseMedicineApi.createChineseMedicineItem(newItem)
@@ -408,10 +451,12 @@
 
   const handleEdit = (row: Api.ChineseMedicine.Item) => {
     currentEditingItem.value = row
+    const priceInYuan = convertTenThousandthsToYuan(row.price) // 将分转换为元显示
     editForm.value = {
       name: row.name,
       description: row.description || '',
-      price: convertCentsToYuan(row.price) // 将分转换为元显示
+      price: priceInYuan, // 元/克
+      pricePerKg: Number((priceInYuan * 1000).toFixed(2)) // 元/千克
     }
     editDialogVisible.value = true
   }
@@ -421,7 +466,8 @@
     editForm.value = {
       name: '',
       description: '',
-      price: 0
+      price: 0,
+      pricePerKg: 0
     }
     currentEditingItem.value = null
     editFormRef.value?.clearValidate()
@@ -445,7 +491,7 @@
         id: currentEditingItem.value.id,
         name: editForm.value.name,
         description: editForm.value.description,
-        price: convertYuanToCents(editForm.value.price) // 将元转换为分
+        price: convertYuanToTenThousandths(editForm.value.price) // 将元转换为分
       }
 
       const response = await chineseMedicineApi.updateChineseMedicineItem(updateParams)

@@ -30,5 +30,11 @@ export enum RoutesAlias {
   // 数据管理
   DataInquiry = '/data/data-inquiry', // 资料查询
   OutpatientLog = '/data/outpatient-log', // 门诊日志
-  DataManagement = '/data/data-management' // 数据管理
+  DataManagement = '/data/data-management', // 数据管理
+
+  // 系统管理
+  User = '/system/user', // 账户
+  Role = '/system/role', // 角色
+  UserCenter = '/system/user-center', // 用户中心
+  Menu = '/system/menu' // 菜单
 }

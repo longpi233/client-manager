@@ -71,37 +71,40 @@ export function formatAmount(amount: number | string): string {
 }
 
 // 格式化金额（从分转为元显示）
-export function formatAmountFromCents(cents: number | string): string {
-  if (!cents || cents === 0) return '¥0.00'
+// 格式化金额（从万分转为元显示）
+export function formatAmountFromTenThousandths(tenThousandths: number | string): string {
+  if (!tenThousandths || tenThousandths === 0) return '¥0.0000'
 
-  const centsNum = typeof cents === 'string' ? parseInt(cents) : cents
-  if (isNaN(centsNum)) return '¥0.00'
+  const num = typeof tenThousandths === 'string' ? parseInt(tenThousandths) : tenThousandths
+  if (isNaN(num)) return '¥0.0000'
 
-  // 分转元：除以100
-  const yuan = centsNum / 100
-  return `¥${yuan.toFixed(2)}`
+  // 万分转元：除以10000
+  const yuan = num / 10000
+  return `¥${yuan.toFixed(4)}`
 }
 
 // 元转分（用于前端向后端发送数据）
-export function convertYuanToCents(yuan: number | string): number {
+// 元转万分（用于前端向后端发送数据，1元=10000单位）
+export function convertYuanToTenThousandths(yuan: number | string): number {
   if (!yuan || yuan === 0) return 0
 
   const yuanNum = typeof yuan === 'string' ? parseFloat(yuan) : yuan
   if (isNaN(yuanNum)) return 0
 
-  // 元转分：乘以100并四舍五入
-  return Math.round(yuanNum * 100)
+  // 元转万分：乘以10000并四舍五入
+  return Math.round(yuanNum * 10000)
 }
 
 // 分转元（用于后端数据转为前端显示）
-export function convertCentsToYuan(cents: number | string): number {
-  if (!cents || cents === 0) return 0
+// 万分转元（用于后端数据转为前端显示，1元=10000单位）
+export function convertTenThousandthsToYuan(tenThousandths: number | string): number {
+  if (!tenThousandths || tenThousandths === 0) return 0
 
-  const centsNum = typeof cents === 'string' ? parseInt(cents) : cents
-  if (isNaN(centsNum)) return 0
+  const num = typeof tenThousandths === 'string' ? parseInt(tenThousandths) : tenThousandths
+  if (isNaN(num)) return 0
 
-  // 分转元：除以100
-  return centsNum / 100
+  // 万分转元：除以10000
+  return num / 10000
 }
 
 // 格式化百分比

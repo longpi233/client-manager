@@ -214,7 +214,7 @@
         <ElTableColumn prop="amount" label="结算金额" width="120" align="right">
           <template #default="{ row }">
             <span v-if="row.amount" class="amount-text">
-              {{ formatAmountFromCents(row.amount) }}
+              {{ formatAmountFromTenThousandths(row.amount) }}
             </span>
             <span v-else class="text-placeholder">-</span>
           </template>
@@ -282,7 +282,9 @@
       <ElRow :gutter="24" style="margin-top: 16px">
         <ElCol :span="6">
           <div class="stat-item">
-            <div class="stat-value amount">{{ formatAmountFromCents(statistics.totalAmount) }}</div>
+            <div class="stat-value amount">{{
+              formatAmountFromTenThousandths(statistics.totalAmount)
+            }}</div>
             <div class="stat-label">总金额</div>
           </div>
         </ElCol>
@@ -386,149 +388,7 @@
     </ElCard>
 
     <!-- 详情弹窗 -->
-    <ElDialog
-      v-model="detailVisible"
-      :title="`${getDataTypeName(selectedItem?.data_type || '')}详情`"
-      width="80%"
-      :before-close="handleCloseDetail"
-    >
-      <div class="detail-content" v-if="selectedItem">
-        <!-- 基本信息 -->
-        <ElDescriptions title="基本信息" :column="3" border style="margin-bottom: 20px">
-          <ElDescriptionsItem label="患者姓名">{{ selectedItem.customer_name }}</ElDescriptionsItem>
-          <ElDescriptionsItem label="性别">
-            {{ formatGender(selectedItem.gender) }}
-          </ElDescriptionsItem>
-          <ElDescriptionsItem label="年龄">{{ selectedItem.age }}岁</ElDescriptionsItem>
-          <ElDescriptionsItem label="联系电话">{{
-            selectedItem.phone || selectedItem.telephone
-          }}</ElDescriptionsItem>
-          <ElDescriptionsItem label="就诊时间">{{
-            formatDateTime(selectedItem.time_of_visit)
-          }}</ElDescriptionsItem>
-          <ElDescriptionsItem label="结算类型">{{
-            getTradeTypeName(selectedItem.trade_type)
-          }}</ElDescriptionsItem>
-          <ElDescriptionsItem label="数据类型" :span="2">
-            <ElTag :type="getDataTypeTagType(selectedItem.data_type)">
-              {{ getDataTypeName(selectedItem.data_type) }}
-            </ElTag>
-          </ElDescriptionsItem>
-          <ElDescriptionsItem label="诊断信息" :span="3">{{
-            selectedItem.diagnosis || '-'
-          }}</ElDescriptionsItem>
-        </ElDescriptions>
-
-        <!-- 治疗项目详情 -->
-        <div v-if="selectedItem.treatment_items && selectedItem.treatment_items.length > 0">
-          <h4 style="margin: 20px 0 10px">治疗项目明细</h4>
-          <ElTable :data="selectedItem.treatment_items" border style="width: 100%">
-            <ElTableColumn type="index" label="序号" width="60" />
-            <ElTableColumn prop="treatment_item" label="治疗项目" min-width="150" />
-            <ElTableColumn prop="count" label="数量/次数" width="100" align="center" />
-            <ElTableColumn prop="unit_price" label="单价(元)" width="120" align="right">
-              <template #default="{ row }">{{
-                formatAmountFromCents(row.unit_price || 0)
-              }}</template>
-            </ElTableColumn>
-            <ElTableColumn prop="total_price" label="小计(元)" width="120" align="right">
-              <template #default="{ row }">
-                <span class="amount-text">{{ formatAmountFromCents(row.total_price || 0) }}</span>
-              </template>
-            </ElTableColumn>
-          </ElTable>
-        </div>
-
-        <!-- 处方详情（仅中药处方） -->
-        <div
-          v-if="
-            selectedItem.data_type === 'prescription' &&
-            selectedItem.prescription &&
-            selectedItem.prescription.length > 0
-          "
-        >
-          <h4 style="margin: 20px 0 10px">处方明细</h4>
-          <ElTable :data="selectedItem.prescription" border style="width: 100%">
-            <ElTableColumn type="index" label="序号" width="60" />
-            <ElTableColumn prop="medicine_name" label="中药名称" />
-            <ElTableColumn prop="grams" label="克数" width="100">
-              <template #default="{ row }">{{ row.grams }}g</template>
-            </ElTableColumn>
-            <ElTableColumn prop="unit_price" label="单价(元/g)" width="120">
-              <template #default="{ row }">
-                {{ formatAmountFromCents(row.unit_price || 0) }}
-              </template>
-            </ElTableColumn>
-            <ElTableColumn prop="total_price" label="金额(元)" width="100">
-              <template #default="{ row }">
-                {{ formatAmountFromCents((row.grams || 0) * (row.unit_price || 0)) }}
-              </template>
-            </ElTableColumn>
-          </ElTable>
-
-          <ElDescriptions title="处方信息" :column="2" border style="margin-top: 20px">
-            <ElDescriptionsItem label="付数">{{ selectedItem.doses }}付</ElDescriptionsItem>
-            <ElDescriptionsItem label="单付金额">{{
-              formatAmountFromCents(selectedItem.single_dose_amount || 0)
-            }}</ElDescriptionsItem>
-            <ElDescriptionsItem label="总金额" :span="2">
-              <span class="amount-text">{{
-                formatAmountFromCents(selectedItem.total_amount || 0)
-              }}</span>
-            </ElDescriptionsItem>
-          </ElDescriptions>
-        </div>
-
-        <!-- 其他详细信息 -->
-        <div v-if="selectedItem.data_type === 'medical'">
-          <ElDescriptions title="诊疗信息" :column="1" border style="margin-top: 20px">
-            <ElDescriptionsItem label="主诉">{{
-              selectedItem.chief_complaint || '-'
-            }}</ElDescriptionsItem>
-            <ElDescriptionsItem label="现病史">{{
-              selectedItem.illness_history || '-'
-            }}</ElDescriptionsItem>
-            <ElDescriptionsItem label="体格检查">{{
-              selectedItem.physical_examination || '-'
-            }}</ElDescriptionsItem>
-            <ElDescriptionsItem label="既往史">{{
-              selectedItem.past_history || '-'
-            }}</ElDescriptionsItem>
-            <ElDescriptionsItem label="实验室检查">{{
-              selectedItem.laboratory_examination || '-'
-            }}</ElDescriptionsItem>
-            <ElDescriptionsItem label="治法治则">{{
-              selectedItem.treatment_method || '-'
-            }}</ElDescriptionsItem>
-          </ElDescriptions>
-        </div>
-
-        <ElDescriptions :column="1" border style="margin-top: 20px">
-          <ElDescriptionsItem label="备注">{{ selectedItem.note || '-' }}</ElDescriptionsItem>
-        </ElDescriptions>
-      </div>
-
-      <template #footer>
-        <ElButton @click="detailVisible = false">关闭</ElButton>
-
-        <!-- 散客登记：暂不支持打印 -->
-        <template v-if="selectedItem && selectedItem.data_type === 'customer'">
-          <ElButton type="info" disabled>散客登记暂不支持打印</ElButton>
-        </template>
-
-        <!-- 门诊病历：支持打印病历和费用清单 -->
-        <template v-if="selectedItem && selectedItem.data_type === 'medical'">
-          <ElButton type="success" @click="handlePrintMedicalRecord">生成门诊病历</ElButton>
-          <ElButton type="warning" @click="handlePrintMedicalFeeList">生成费用清单</ElButton>
-        </template>
-
-        <!-- 中药处方：支持打印处方和费用清单 -->
-        <template v-if="selectedItem && selectedItem.data_type === 'prescription'">
-          <ElButton type="success" @click="handlePrintPrescription">生成中药处方</ElButton>
-          <ElButton type="warning" @click="handlePrintPrescriptionFeeList">生成费用清单</ElButton>
-        </template>
-      </template>
-    </ElDialog>
+    <DataInquiryDetail v-model="detailVisible" :selected-item="selectedItem" />
   </div>
 </template>
 
@@ -546,24 +406,19 @@
   import ArtLineChart from '@/components/core/charts/art-line-chart/index.vue'
   import ArtRingChart from '@/components/core/charts/art-ring-chart/index.vue'
   import ArtExcelExport from '@/components/core/forms/art-excel-export/index.vue'
+  import DataInquiryDetail from '@/components/custom/data-inquiry-detail/index.vue'
   import {
     formatDateTime,
     formatGender,
-    formatAmountFromCents,
+    formatAmountFromTenThousandths,
     getTradeTypeName,
     getDataTypeName,
     getTradeTypeTagType,
     getDataTypeTagType,
     generateExportFilename
   } from '@/utils/dataprocess/medicalFormatter'
-  import {
-    printMedicalRecord,
-    printFeeList,
-    printPrescription,
-    type MedicalRecordData,
-    type FeeListData,
-    type PrescriptionData
-  } from '@/utils/print'
+  import { convertTenThousandthsToYuan } from '@/utils/dataprocess/format'
+  import { RecordType } from '@/api/unifiedMedicalRecordApi'
 
   defineOptions({ name: 'OutpatientLog' })
 
@@ -573,7 +428,7 @@
     month: '',
     year: '',
     dateRange: [] as string[],
-    dataType: '',
+    dataType: RecordType,
     tradeType: ''
   })
 
@@ -748,10 +603,8 @@
   // 计算属性
   const hasData = computed(() => tableData.value.length > 0)
 
-  // 简化的价格转换函数（分转元）
-  const convertToYuan = (cents: number): number => {
-    return Math.round((cents / 100) * 100) / 100
-  }
+  // 使用标准化的价格转换函数（万分转元）
+  const convertToYuan = convertTenThousandthsToYuan
 
   // 导出列配置
   const exportColumns = computed(() => ({
@@ -771,7 +624,7 @@
     },
     data_type: {
       title: '数据类型',
-      formatter: (value: any) => getDataTypeName(value as string)
+      formatter: (value: any) => getDataTypeName(value)
     },
     trade_type: {
       title: '结算类别',
@@ -785,7 +638,7 @@
     },
     amount: {
       title: '结算金额(元)',
-      formatter: (value: any) => formatAmountFromCents(value as number)
+      formatter: (value: any) => formatAmountFromTenThousandths(value as number)
     },
     note: {
       title: '备注'
@@ -807,7 +660,7 @@
 
     const conditions = ['门诊日志', periodText]
     if (searchParams.dataType) {
-      conditions.push(getDataTypeName(searchParams.dataType))
+      conditions.push(getDataTypeName(searchParams.dataType as unknown as RecordType))
     }
     if (searchParams.tradeType) {
       conditions.push(getTradeTypeName(searchParams.tradeType))
@@ -895,7 +748,7 @@
         size: 10000,
         start_date: startDate,
         end_date: endDate,
-        data_type: (searchParams.dataType as 'customer' | 'medical' | 'prescription') || undefined,
+        data_type: searchParams.dataType || undefined,
         trade_type: searchParams.tradeType || undefined
       })
 
@@ -904,7 +757,7 @@
         size: 10000, // 设置足够大的数量以获取所有数据
         start_date: startDate,
         end_date: endDate,
-        data_type: (searchParams.dataType as 'customer' | 'medical' | 'prescription') || undefined,
+        data_type: (searchParams.dataType as unknown as RecordType) || undefined,
         trade_type: searchParams.tradeType || undefined
       })
 
@@ -1020,170 +873,6 @@
   const handleViewDetail = (row: OutpatientLogItem) => {
     selectedItem.value = row
     detailVisible.value = true
-  }
-
-  // 关闭详情
-  const handleCloseDetail = () => {
-    detailVisible.value = false
-    selectedItem.value = null
-  }
-
-  // 打印门诊病历
-  const handlePrintMedicalRecord = async () => {
-    if (!selectedItem.value) {
-      ElMessage.warning('请先选择要打印的记录')
-      return
-    }
-
-    try {
-      // 构建门诊病历打印数据
-      const medicalData: MedicalRecordData = {
-        customer_name: selectedItem.value.customer_name,
-        gender: selectedItem.value.gender,
-        age: selectedItem.value.age,
-        telephone: selectedItem.value.phone || selectedItem.value.telephone,
-        time_of_visit: selectedItem.value.time_of_visit,
-        trade_type: selectedItem.value.trade_type,
-        chief_complaint: selectedItem.value.chief_complaint || '',
-        illness_history: selectedItem.value.illness_history || '',
-        physical_examination: selectedItem.value.physical_examination || '',
-        past_history: selectedItem.value.past_history || '',
-        laboratory_examination: selectedItem.value.laboratory_examination || '',
-        diagnosis: selectedItem.value.diagnosis,
-        treatment_method: selectedItem.value.treatment_method || '',
-        note: selectedItem.value.note || '',
-        treatment_items: (selectedItem.value.treatment_items || []).map((item: any) => ({
-          treatment_item: item.treatment_item,
-          count: item.count,
-          unit_price: item.unit_price,
-          total_price: item.total_price
-        })),
-        doctor_name: selectedItem.value.doctor_name || '系统'
-      }
-
-      await printMedicalRecord(medicalData)
-      ElMessage.success('门诊病历打印成功')
-    } catch (error) {
-      console.error('打印门诊病历失败:', error)
-      ElMessage.error('打印失败，请重试')
-    }
-  }
-
-  // 打印门诊费用清单
-  const handlePrintMedicalFeeList = async () => {
-    if (!selectedItem.value) {
-      ElMessage.warning('请先选择要打印的记录')
-      return
-    }
-
-    try {
-      // 构建费用清单打印数据
-      const feeListData: FeeListData = {
-        customer_name: selectedItem.value.customer_name,
-        gender: selectedItem.value.gender,
-        age: selectedItem.value.age,
-        telephone: selectedItem.value.phone || selectedItem.value.telephone,
-        time_of_visit: selectedItem.value.time_of_visit,
-        trade_type: selectedItem.value.trade_type,
-        diagnosis: selectedItem.value.diagnosis,
-        note: selectedItem.value.note || '',
-        treatment_items: (selectedItem.value.treatment_items || []).map((item: any) => ({
-          treatment_item: item.treatment_item,
-          count: item.count,
-          unit_price: item.unit_price,
-          total_price: item.total_price
-        })),
-        total_amount: (selectedItem.value.treatment_items || []).reduce(
-          (sum: number, item: any) => sum + (item.total_price || 0),
-          0
-        ),
-        doctor_name: selectedItem.value.doctor_name || '系统'
-      }
-
-      await printFeeList(feeListData)
-      ElMessage.success('费用清单打印成功')
-    } catch (error) {
-      console.error('打印费用清单失败:', error)
-      ElMessage.error('打印失败，请重试')
-    }
-  }
-
-  // 打印中药处方
-  const handlePrintPrescription = async () => {
-    if (!selectedItem.value) {
-      ElMessage.warning('请先选择要打印的记录')
-      return
-    }
-
-    try {
-      // 构建中药处方打印数据
-      const prescriptionData: PrescriptionData = {
-        customer_name: selectedItem.value.customer_name,
-        gender: selectedItem.value.gender,
-        age: selectedItem.value.age,
-        telephone: selectedItem.value.phone || selectedItem.value.telephone,
-        time_of_visit: selectedItem.value.time_of_visit,
-        trade_type: selectedItem.value.trade_type,
-        diagnosis: selectedItem.value.diagnosis,
-        note: selectedItem.value.note || '',
-        prescription_items: (selectedItem.value.prescription || []).map((item: any) => ({
-          medicine_name: item.medicine_name,
-          grams: item.grams,
-          unit_price: item.unit_price,
-          total_price: item.grams * item.unit_price
-        })),
-        doses: selectedItem.value.doses || 1,
-        single_dose_amount: selectedItem.value.single_dose_amount || 0,
-        total_amount: selectedItem.value.total_amount || 0,
-        doctor_name: selectedItem.value.doctor_name || '系统'
-      }
-
-      await printPrescription(prescriptionData)
-      ElMessage.success('中药处方打印成功')
-    } catch (error) {
-      console.error('打印中药处方失败:', error)
-      ElMessage.error('打印失败，请重试')
-    }
-  }
-
-  // 打印中药处方费用清单
-  const handlePrintPrescriptionFeeList = async () => {
-    if (!selectedItem.value) {
-      ElMessage.warning('请先选择要打印的记录')
-      return
-    }
-
-    try {
-      // 构建费用清单打印数据（基于中药处方）
-      const feeListData: FeeListData = {
-        customer_name: selectedItem.value.customer_name,
-        gender: selectedItem.value.gender,
-        age: selectedItem.value.age,
-        telephone: selectedItem.value.phone || selectedItem.value.telephone,
-        time_of_visit: selectedItem.value.time_of_visit,
-        trade_type: selectedItem.value.trade_type,
-        diagnosis: selectedItem.value.diagnosis,
-        note: selectedItem.value.note || '',
-        treatment_items: (selectedItem.value.prescription || []).map((item: any) => {
-          const singleTotal = item.grams * item.unit_price
-          const doses = selectedItem.value?.doses || 1
-          return {
-            treatment_item: `${item.medicine_name} (${item.grams}g)`,
-            count: doses,
-            unit_price: singleTotal,
-            total_price: singleTotal * doses
-          }
-        }),
-        total_amount: selectedItem.value.total_amount || 0,
-        doctor_name: selectedItem.value.doctor_name || '系统'
-      }
-
-      await printFeeList(feeListData)
-      ElMessage.success('费用清单打印成功')
-    } catch (error) {
-      console.error('打印费用清单失败:', error)
-      ElMessage.error('打印失败，请重试')
-    }
   }
 
   // 选择变化处理
