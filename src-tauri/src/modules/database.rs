@@ -27,20 +27,6 @@ impl DatabaseManager {
     }
 
     fn create_tables(conn: &Connection) -> SqliteResult<()> {
-        // 康养项目表
-        conn.execute(
-            "CREATE TABLE IF NOT EXISTS healing_items (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                unit_price INTEGER NOT NULL,  -- 价格以分为单位存储
-                description TEXT,
-                status TEXT NOT NULL DEFAULT 'active',
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
-            )",
-            [],
-        )?;
-
         // 机构信息表
         conn.execute(
             "CREATE TABLE IF NOT EXISTS institutions (
@@ -59,12 +45,37 @@ impl DatabaseManager {
             )",
             [],
         )?;
+        // 治疗项目表
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS healing_items (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                unit_price INTEGER NOT NULL,  -- 价格以万分为单位存储
+                description TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )",
+            [],
+        )?;
+
+        // 中药表
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS chinese_medicines (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                unit_price INTEGER NOT NULL,     -- 单价（以万分为单位）
+                description TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )",
+            [],
+        )?;
 
         // 统一医疗记录主表 (包含散客登记、门诊病历、中药处方的通用信息)
         conn.execute(
             "CREATE TABLE IF NOT EXISTS medical_records (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                record_type TEXT NOT NULL, -- 'customer', 'medical', 'prescription'
+                data_type TEXT NOT NULL, -- 'customer', 'medical', 'prescription'
                 customer_name TEXT NOT NULL,
                 gender TEXT NOT NULL,
                 age INTEGER NOT NULL,
@@ -73,6 +84,11 @@ impl DatabaseManager {
                 trade_type TEXT NOT NULL,
                 diagnosis TEXT NOT NULL,
                 note TEXT,
+                total_amount INTEGER NOT NULL DEFAULT 0, -- 总金额（以万分为单位）
+                doctor_id INTEGER,
+                doctor_name TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
                 
                 -- 门诊病历特有字段
                 chief_complaint TEXT,
@@ -84,28 +100,20 @@ impl DatabaseManager {
                 
                 -- 中药处方特有字段
                 doses INTEGER, -- 付数
-                single_dose_amount INTEGER, -- 单付金额（以分为单位）
-                
-                -- 通用字段
-                total_amount INTEGER NOT NULL DEFAULT 0, -- 总金额（以分为单位）
-                doctor_id INTEGER,
-                doctor_name TEXT,
-                status TEXT NOT NULL DEFAULT '1',
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
+                single_dose_amount INTEGER -- 单付金额（以万分为单位）
             )",
             [],
         )?;
 
-        // 治疗项目记录表 (记录康养治疗项目)
+        // 治疗项目记录表 (记录治疗项目)
         conn.execute(
             "CREATE TABLE IF NOT EXISTS medical_treatment_items (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 medical_record_id INTEGER NOT NULL,
-                treatment_item_name TEXT NOT NULL,
-                treatment_count INTEGER NOT NULL DEFAULT 1,
-                unit_price INTEGER NOT NULL,     -- 单价（以分为单位）
-                total_price INTEGER NOT NULL,    -- 总价（以分为单位）
+                treatment_item TEXT NOT NULL,
+                count INTEGER NOT NULL DEFAULT 1,
+                unit_price INTEGER NOT NULL,     -- 单价（以万分为单位）
+                total_price INTEGER NOT NULL,    -- 总价（以万分为单位）
                 created_at TEXT NOT NULL,
                 FOREIGN KEY (medical_record_id) REFERENCES medical_records(id) ON DELETE CASCADE
             )",
@@ -118,30 +126,11 @@ impl DatabaseManager {
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 medical_record_id INTEGER NOT NULL,
                 medicine_name TEXT NOT NULL,
-                grams REAL NOT NULL,
-                unit_price INTEGER NOT NULL,     -- 单价（以分为单位）
-                total_price INTEGER NOT NULL,    -- 总价（以分为单位）
+                grams INTEGER NOT NULL,
+                unit_price INTEGER NOT NULL,     -- 单价（以万分为单位）
+                total_price INTEGER NOT NULL,    -- 总价（以万分为单位）
                 created_at TEXT NOT NULL,
                 FOREIGN KEY (medical_record_id) REFERENCES medical_records(id) ON DELETE CASCADE
-            )",
-            [],
-        )?;
-
-        // 中药表 (保持不变)
-        conn.execute(
-            "CREATE TABLE IF NOT EXISTS chinese_medicines (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL UNIQUE,
-                category TEXT NOT NULL,
-                unit_price INTEGER NOT NULL,     -- 单价（以分为单位）
-                stock_quantity INTEGER NOT NULL DEFAULT 0,
-                description TEXT,
-                efficacy TEXT,
-                usage TEXT,
-                contraindications TEXT,
-                status TEXT NOT NULL DEFAULT '1',
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
             )",
             [],
         )?;
@@ -199,12 +188,12 @@ impl DatabaseManager {
     pub fn clear_all_data(&self) -> SqliteResult<()> {
         let conn = self.get_connection();
 
-        conn.execute("DELETE FROM healing_items", [])?;
         conn.execute("DELETE FROM institutions", [])?;
+        conn.execute("DELETE FROM healing_items", [])?;
+        conn.execute("DELETE FROM chinese_medicines", [])?;
+        conn.execute("DELETE FROM medical_records", [])?;
         conn.execute("DELETE FROM medical_treatment_items", [])?;
         conn.execute("DELETE FROM medical_prescription_items", [])?;
-        conn.execute("DELETE FROM medical_records", [])?;
-        conn.execute("DELETE FROM chinese_medicines", [])?;
 
         Ok(())
     }
@@ -223,10 +212,15 @@ impl DatabaseManager {
             conn.query_row("SELECT COUNT(*) FROM medical_records", [], |row| row.get(0))?;
 
         let treatment_item_count: i64 =
-            conn.query_row("SELECT COUNT(*) FROM medical_treatment_items", [], |row| row.get(0))?;
+            conn.query_row("SELECT COUNT(*) FROM medical_treatment_items", [], |row| {
+                row.get(0)
+            })?;
 
-        let prescription_item_count: i64 =
-            conn.query_row("SELECT COUNT(*) FROM medical_prescription_items", [], |row| row.get(0))?;
+        let prescription_item_count: i64 = conn.query_row(
+            "SELECT COUNT(*) FROM medical_prescription_items",
+            [],
+            |row| row.get(0),
+        )?;
 
         let medicine_count: i64 =
             conn.query_row("SELECT COUNT(*) FROM chinese_medicines", [], |row| {
@@ -235,19 +229,19 @@ impl DatabaseManager {
 
         // 按记录类型统计
         let customer_count: i64 = conn.query_row(
-            "SELECT COUNT(*) FROM medical_records WHERE record_type = 'customer'",
+            "SELECT COUNT(*) FROM medical_records WHERE data_type = 'customer'",
             [],
             |row| row.get(0),
         )?;
 
         let medical_count: i64 = conn.query_row(
-            "SELECT COUNT(*) FROM medical_records WHERE record_type = 'medical'",
+            "SELECT COUNT(*) FROM medical_records WHERE data_type = 'medical'",
             [],
             |row| row.get(0),
         )?;
 
         let prescription_count: i64 = conn.query_row(
-            "SELECT COUNT(*) FROM medical_records WHERE record_type = 'prescription'",
+            "SELECT COUNT(*) FROM medical_records WHERE data_type = 'prescription'",
             [],
             |row| row.get(0),
         )?;

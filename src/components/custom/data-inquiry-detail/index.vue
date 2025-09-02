@@ -53,13 +53,13 @@
     type FeeListData,
     type PrescriptionData
   } from '@/utils/print'
-  import type { OutpatientLogItem } from '@/api/outpatientLogApi'
+  import type { UnifiedMedicalRecord } from '@/types/medical'
 
   defineOptions({ name: 'DataInquiryDetail' })
 
   interface Props {
     modelValue: boolean
-    selectedItem: OutpatientLogItem | null
+    selectedItem: UnifiedMedicalRecord | null
   }
 
   interface Emits {
@@ -193,7 +193,7 @@
         trade_type: props.selectedItem.trade_type,
         diagnosis: props.selectedItem.diagnosis,
         note: props.selectedItem.note,
-        prescription_items: (props.selectedItem.prescription || []).map((item: any) => ({
+        prescription_items: (props.selectedItem.prescription_items || []).map((item: any) => ({
           medicine_name: item.medicine_name,
           grams: item.grams,
           unit_price: item.unit_price,

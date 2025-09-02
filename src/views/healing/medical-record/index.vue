@@ -233,7 +233,9 @@
                     </ElFormItem>
                   </ElCol>
                   <ElCol :span="4">
-                    <div class="price-display">{{ getUnitPrice(index) }}</div>
+                    <div class="price-display">{{
+                      formatAmountFromTenThousandths(getUnitPriceTenThousandths(item.treatmentItem))
+                    }}</div>
                   </ElCol>
                   <ElCol :span="4">
                     <ElFormItem
@@ -253,7 +255,9 @@
                     </ElFormItem>
                   </ElCol>
                   <ElCol :span="4">
-                    <div class="price-display">{{ getItemTotalPrice(index) }}</div>
+                    <div class="price-display">{{
+                      formatAmountFromTenThousandths(totalAmountTenThousandths)
+                    }}</div>
                   </ElCol>
                   <ElCol :span="4">
                     <div class="action-button-wrapper">
@@ -301,7 +305,7 @@
             <div class="total-amount">
               <span class="total-label">总金额：</span>
               <span class="total-value"
-                >¥{{ convertTenThousandthsToYuan(totalTenThousandthsAmount) }}</span
+                >¥{{ convertTenThousandthsToYuan(totalAmountTenThousandths) }}</span
               >
             </div>
           </ElCol>
@@ -359,7 +363,7 @@
   import { getInstitutionInfo } from '@/api/institutionApi'
   import { getHealingList } from '@/api/healingApi'
   import { createMedicalRecord as createMedicalRecord } from '@/api/unifiedMedicalRecordApi'
-  import { GENDER_OPTIONS, TRADE_TYPE_OPTIONS } from '@/config/common'
+  import { GENDER_OPTIONS, TRADE_TYPE_OPTIONS } from '@/types/medical'
   import {
     printMedicalRecord as printMedicalRecordTemplate,
     printFeeList as printFeeListTemplate,
@@ -439,19 +443,9 @@
         }))
       } else {
         console.error('获取机构信息失败:', res.msg)
-        // 如果API失败，使用默认数据
-        doctorList.value = [
-          { id: 1, name: '李明' },
-          { id: 2, name: '张丽' }
-        ]
       }
     } catch (error) {
       console.error('加载医师列表失败:', error)
-      // 使用默认数据
-      doctorList.value = [
-        { id: 1, name: '李明' },
-        { id: 2, name: '张丽' }
-      ]
     }
   }
 
@@ -472,69 +466,9 @@
         filteredHealingItems.value = res.data.records
       } else {
         console.error('获取康养项目失败:', res.msg)
-        // 使用默认数据作为备选
-        const mockHealingItems: Api.Healing.Item[] = [
-          {
-            id: 1,
-            name: '针灸',
-            price: 100
-          },
-          {
-            id: 2,
-            name: '推拿',
-            price: 150
-          },
-          {
-            id: 3,
-            name: '拔罐',
-            price: 80
-          },
-          {
-            id: 4,
-            name: '艾灸',
-            price: 120
-          },
-          {
-            id: 5,
-            name: '中药熏蒸',
-            price: 200
-          }
-        ]
-        healingItems.value = mockHealingItems
-        filteredHealingItems.value = mockHealingItems
       }
     } catch (error) {
       console.error('加载治疗项目失败:', error)
-      // 使用默认数据
-      const mockHealingItems: Api.Healing.Item[] = [
-        {
-          id: 1,
-          name: '针灸',
-          price: 100
-        },
-        {
-          id: 2,
-          name: '推拿',
-          price: 150
-        },
-        {
-          id: 3,
-          name: '拔罐',
-          price: 80
-        },
-        {
-          id: 4,
-          name: '艾灸',
-          price: 120
-        },
-        {
-          id: 5,
-          name: '中药熏蒸',
-          price: 200
-        }
-      ]
-      healingItems.value = mockHealingItems
-      filteredHealingItems.value = mockHealingItems
       ElMessage.error('加载治疗项目失败')
     }
   }
@@ -572,51 +506,20 @@
   const handleTreatmentItemChange = () => {
     calculateTotalPrice()
   }
-
-  // 获取单价（显示为元）
-  const getUnitPrice = (index: number): string => {
-    const treatmentName = form.treatment[index]?.treatmentItem
-    if (!treatmentName) return '¥0.0000'
-
-    const healingItem = healingItems.value.find((item) => item.name === treatmentName)
-    if (!healingItem) return '¥0.0000'
-
-    // healingItem.price 假设是以万分为单位存储，需要转换为元显示
-    return formatAmountFromTenThousandths(healingItem.price)
-  }
-
-  // 获取项目总价（显示为元）
-  const getItemTotalPrice = (index: number): string => {
-    const treatmentName = form.treatment[index]?.treatmentItem
-    const count = form.treatment[index]?.count || 0
-
-    if (!treatmentName || !count) return '¥0.0000'
-
-    const healingItem = healingItems.value.find((item) => item.name === treatmentName)
-    if (!healingItem) return '¥0.0000'
-
-    // healingItem.price 以万分为单位，计算总价（万分）
-    const totalPriceInTenThousandths = healingItem.price * count
-    // 转换为元显示
-    return formatAmountFromTenThousandths(totalPriceInTenThousandths)
+  // 获取单价（显示为万分）
+  const getUnitPriceTenThousandths = (name: string): number => {
+    const healingItem = healingItems.value.find((item) => item.name === name)
+    return healingItem ? healingItem.price : 0
   }
 
   // 计算总金额（显示为元）
-  const totalTenThousandthsAmount = computed(() => {
-    let totalTenThousandths = 0
-
+  const totalAmountTenThousandths = computed(() => {
+    let totalAmount = 0
     form.treatment.forEach((item) => {
-      if (item.treatmentItem && item.count) {
-        const healingItem = healingItems.value.find((hi) => hi.name === item.treatmentItem)
-        if (healingItem) {
-          // healingItem.price 以万分为单位，乘以数量得到总价（万分）
-          totalTenThousandths += healingItem.price * item.count
-        }
-      }
+      totalAmount += getUnitPriceTenThousandths(item.treatmentItem) * (item.count || 0)
     })
-
     // 转换为元显示
-    return totalTenThousandths
+    return totalAmount
   })
 
   // 计算总价
@@ -703,6 +606,7 @@
         diagnosis: form.diagnosis,
         treatment_method: form.treatmentMethod,
         note: form.note,
+        total_amount: totalAmountTenThousandths.value,
         treatment_items: form.treatment.map((item) => {
           const healingItem = healingItems.value.find((hi) => hi.name === item.treatmentItem)
           const unitPrice = healingItem ? healingItem.price : 0
@@ -778,6 +682,18 @@
 
       printMedicalRecordTemplate(printData)
       ElMessage.success('门诊病历打印成功')
+
+      ElMessageBox.confirm('是否确认提交门诊病历登记？', '提交登记', {
+        confirmButtonText: '确认',
+        cancelButtonText: '取消',
+        type: 'warning'
+      })
+        .then(() => {
+          submitRegistration()
+        })
+        .catch(() => {
+          // 用户取消提交
+        })
     } catch (error) {
       console.error('打印门诊病历失败:', error)
       ElMessage.error('请先完善必填信息')
@@ -812,12 +728,24 @@
             total_price: unitPrice * item.count
           }
         }),
-        total_amount: totalTenThousandthsAmount.value,
+        total_amount: totalAmountTenThousandths.value,
         doctor_name: doctorList.value.find((doctor) => doctor.id === parseInt(form.doctorId))?.name
       }
 
       printFeeListTemplate(printData)
       ElMessage.success('费用清单打印成功')
+
+      ElMessageBox.confirm('是否确认提交门诊病历登记？', '提交登记', {
+        confirmButtonText: '确认',
+        cancelButtonText: '取消',
+        type: 'warning'
+      })
+        .then(() => {
+          submitRegistration()
+        })
+        .catch(() => {
+          // 用户取消提交
+        })
     } catch (error) {
       console.error('打印费用清单失败:', error)
       ElMessage.error('请先完善必填信息')

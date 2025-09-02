@@ -38,12 +38,12 @@
       </template>
 
       <!-- 散客登记搜索 -->
-      <div v-if="queryType === 'customer'" class="search-form">
+      <div class="search-form">
         <ElRow :gutter="20">
           <ElCol :span="6">
             <ElFormItem label="患者姓名">
               <ElInput
-                v-model="currentSearch.customerName"
+                v-model="searchParams.customer_name"
                 placeholder="请输入患者姓名"
                 clearable
                 @change="handleSearch"
@@ -53,7 +53,7 @@
           <ElCol :span="6">
             <ElFormItem label="联系电话">
               <ElInput
-                v-model="currentSearch.telephone"
+                v-model="searchParams.telephone"
                 placeholder="请输入联系电话"
                 clearable
                 @change="handleSearch"
@@ -63,7 +63,7 @@
           <ElCol :span="6">
             <ElFormItem label="诊断信息">
               <ElInput
-                v-model="currentSearch.diagnosis"
+                v-model="searchParams.diagnosis"
                 placeholder="请输入诊断信息"
                 clearable
                 @change="handleSearch"
@@ -73,7 +73,7 @@
           <ElCol :span="6">
             <ElFormItem label="就诊时间">
               <ElDatePicker
-                v-model="currentSearch.dateRange"
+                v-model="dateRange"
                 type="daterange"
                 range-separator="至"
                 start-placeholder="开始日期"
@@ -89,13 +89,17 @@
           <ElCol :span="6">
             <ElFormItem label="患者性别">
               <ElSelect
-                v-model="currentSearch.gender"
+                v-model="searchParams.gender"
                 placeholder="请选择性别"
                 clearable
                 @change="handleSearch"
               >
-                <ElOption label="男" value="1" />
-                <ElOption label="女" value="2" />
+                <ElOption
+                  v-for="option in GENDER_OPTIONS"
+                  :key="option.value"
+                  :label="option.label"
+                  :value="option.value"
+                />
               </ElSelect>
             </ElFormItem>
           </ElCol>
@@ -103,7 +107,7 @@
             <ElFormItem label="年龄范围">
               <div class="age-range-input">
                 <ElInputNumber
-                  v-model="currentSearch.minAge"
+                  v-model="searchParams.min_age"
                   placeholder="最小年龄"
                   :min="0"
                   :max="200"
@@ -112,7 +116,7 @@
                 />
                 <span class="age-separator">-</span>
                 <ElInputNumber
-                  v-model="currentSearch.maxAge"
+                  v-model="searchParams.max_age"
                   placeholder="最大年龄"
                   :min="0"
                   :max="200"
@@ -125,218 +129,17 @@
           <ElCol :span="6">
             <ElFormItem label="结算类型">
               <ElSelect
-                v-model="currentSearch.tradeType"
+                v-model="searchParams.trade_type"
                 placeholder="请选择结算类型"
                 clearable
                 @change="handleSearch"
               >
-                <ElOption label="现金结算" value="1" />
-                <ElOption label="省直医保" value="2" />
-                <ElOption label="武汉医保" value="3" />
-              </ElSelect>
-            </ElFormItem>
-          </ElCol>
-        </ElRow>
-      </div>
-
-      <!-- 门诊病历搜索 -->
-      <div v-if="queryType === 'medical'" class="search-form">
-        <ElRow :gutter="20">
-          <ElCol :span="6">
-            <ElFormItem label="患者姓名">
-              <ElInput
-                v-model="currentSearch.customerName"
-                placeholder="请输入患者姓名"
-                clearable
-                @change="handleSearch"
-              />
-            </ElFormItem>
-          </ElCol>
-          <ElCol :span="6">
-            <ElFormItem label="联系电话">
-              <ElInput
-                v-model="currentSearch.telephone"
-                placeholder="请输入联系电话"
-                clearable
-                @change="handleSearch"
-              />
-            </ElFormItem>
-          </ElCol>
-          <ElCol :span="6">
-            <ElFormItem label="诊断信息">
-              <ElInput
-                v-model="currentSearch.diagnosis"
-                placeholder="请输入诊断信息"
-                clearable
-                @change="handleSearch"
-              />
-            </ElFormItem>
-          </ElCol>
-          <ElCol :span="6">
-            <ElFormItem label="就诊时间">
-              <ElDatePicker
-                v-model="currentSearch.dateRange"
-                type="daterange"
-                range-separator="至"
-                start-placeholder="开始日期"
-                end-placeholder="结束日期"
-                format="YYYY-MM-DD"
-                value-format="YYYY-MM-DD"
-                @change="handleSearch"
-              />
-            </ElFormItem>
-          </ElCol>
-        </ElRow>
-        <ElRow :gutter="20">
-          <ElCol :span="6">
-            <ElFormItem label="患者性别">
-              <ElSelect
-                v-model="currentSearch.gender"
-                placeholder="请选择性别"
-                clearable
-                @change="handleSearch"
-              >
-                <ElOption label="男" value="1" />
-                <ElOption label="女" value="2" />
-              </ElSelect>
-            </ElFormItem>
-          </ElCol>
-          <ElCol :span="12">
-            <ElFormItem label="年龄范围">
-              <div class="age-range-input">
-                <ElInputNumber
-                  v-model="currentSearch.minAge"
-                  placeholder="最小年龄"
-                  :min="0"
-                  :max="200"
-                  class="age-input"
-                  @change="handleSearch"
+                <ElOption
+                  v-for="option in TRADE_TYPE_OPTIONS"
+                  :key="option.value"
+                  :label="option.label"
+                  :value="option.value"
                 />
-                <span class="age-separator">-</span>
-                <ElInputNumber
-                  v-model="currentSearch.maxAge"
-                  placeholder="最大年龄"
-                  :min="0"
-                  :max="200"
-                  class="age-input"
-                  @change="handleSearch"
-                />
-              </div>
-            </ElFormItem>
-          </ElCol>
-          <ElCol :span="6">
-            <ElFormItem label="结算类型">
-              <ElSelect
-                v-model="currentSearch.tradeType"
-                placeholder="请选择结算类型"
-                clearable
-                @change="handleSearch"
-              >
-                <ElOption label="现金结算" value="1" />
-                <ElOption label="省直医保" value="2" />
-                <ElOption label="武汉医保" value="3" />
-              </ElSelect>
-            </ElFormItem>
-          </ElCol>
-        </ElRow>
-      </div>
-
-      <!-- 中药处方搜索 -->
-      <div v-if="queryType === 'prescription'" class="search-form">
-        <ElRow :gutter="20">
-          <ElCol :span="6">
-            <ElFormItem label="患者姓名">
-              <ElInput
-                v-model="currentSearch.customerName"
-                placeholder="请输入患者姓名"
-                clearable
-                @change="handleSearch"
-              />
-            </ElFormItem>
-          </ElCol>
-          <ElCol :span="6">
-            <ElFormItem label="联系电话">
-              <ElInput
-                v-model="currentSearch.telephone"
-                placeholder="请输入联系电话"
-                clearable
-                @change="handleSearch"
-              />
-            </ElFormItem>
-          </ElCol>
-          <ElCol :span="6">
-            <ElFormItem label="诊断信息">
-              <ElInput
-                v-model="currentSearch.diagnosis"
-                placeholder="请输入诊断信息"
-                clearable
-                @change="handleSearch"
-              />
-            </ElFormItem>
-          </ElCol>
-          <ElCol :span="6">
-            <ElFormItem label="就诊时间">
-              <ElDatePicker
-                v-model="currentSearch.dateRange"
-                type="daterange"
-                range-separator="至"
-                start-placeholder="开始日期"
-                end-placeholder="结束日期"
-                format="YYYY-MM-DD"
-                value-format="YYYY-MM-DD"
-                @change="handleSearch"
-              />
-            </ElFormItem>
-          </ElCol>
-        </ElRow>
-        <ElRow :gutter="20">
-          <ElCol :span="6">
-            <ElFormItem label="患者性别">
-              <ElSelect
-                v-model="currentSearch.gender"
-                placeholder="请选择性别"
-                clearable
-                @change="handleSearch"
-              >
-                <ElOption label="男" value="1" />
-                <ElOption label="女" value="2" />
-              </ElSelect>
-            </ElFormItem>
-          </ElCol>
-          <ElCol :span="12">
-            <ElFormItem label="年龄范围">
-              <div class="age-range-input">
-                <ElInputNumber
-                  v-model="currentSearch.minAge"
-                  placeholder="最小年龄"
-                  :min="0"
-                  :max="200"
-                  class="age-input"
-                  @change="handleSearch"
-                />
-                <span class="age-separator">-</span>
-                <ElInputNumber
-                  v-model="currentSearch.maxAge"
-                  placeholder="最大年龄"
-                  :min="0"
-                  :max="200"
-                  class="age-input"
-                  @change="handleSearch"
-                />
-              </div>
-            </ElFormItem>
-          </ElCol>
-          <ElCol :span="6">
-            <ElFormItem label="结算类型">
-              <ElSelect
-                v-model="currentSearch.tradeType"
-                placeholder="请选择结算类型"
-                clearable
-                @change="handleSearch"
-              >
-                <ElOption label="现金结算" value="1" />
-                <ElOption label="省直医保" value="2" />
-                <ElOption label="武汉医保" value="3" />
               </ElSelect>
             </ElFormItem>
           </ElCol>
@@ -366,9 +169,11 @@
                       .map((i) => i.treatment_item || JSON.stringify(i))
                       .join(', ')
                   : item.treatment_items,
-                prescription: Array.isArray(item.prescription)
-                  ? item.prescription.map((i) => i.medicine_name || JSON.stringify(i)).join(', ')
-                  : item.prescription
+                prescription_items: Array.isArray(item.prescription_items)
+                  ? item.prescription_items
+                      .map((i) => i.medicine_name || JSON.stringify(i))
+                      .join(', ')
+                  : item.prescription_items
               }
               return result
             })
@@ -541,9 +346,9 @@
       <!-- 分页 -->
       <div class="pagination-wrapper">
         <ElPagination
-          v-model:current-page="pagination.current"
-          v-model:page-size="pagination.size"
-          :total="pagination.total"
+          v-model:current-page="searchParams.current"
+          v-model:page-size="searchParams.size"
+          :total="totalCount"
           :page-sizes="[10, 20, 50, 100]"
           layout="total, sizes, prev, pager, next, jumper"
           @size-change="handleSizeChange"
@@ -565,7 +370,8 @@
   import { getInstitutionInfo } from '@/api/institutionApi'
   import ArtExcelExport from '@/components/core/forms/art-excel-export/index.vue'
   import DataInquiryDetail from '@/components/custom/data-inquiry-detail/index.vue'
-  import type { OutpatientLogItem, OutpatientLogSearchParams } from '@/api/outpatientLogApi'
+  import { RecordType, GENDER_OPTIONS, TRADE_TYPE_OPTIONS } from '@/types/medical'
+  import type { UnifiedMedicalRecord, UnifiedMedicalRecordSearchParams } from '@/types/medical'
   import {
     formatDateTime,
     formatGender,
@@ -573,7 +379,6 @@
     getTradeTypeName,
     generateExportFilename
   } from '@/utils/dataprocess/medicalFormatter'
-  import { RecordType } from '@/api/unifiedMedicalRecordApi'
 
   defineOptions({ name: 'DataInquiry' })
 
@@ -587,55 +392,34 @@
   // 医师列表
   const doctorList = ref<{ id: number; name: string }[]>([])
 
-  // 散客搜索条件
-  const currentSearch = reactive({
-    customerName: '',
-    telephone: '',
-    diagnosis: '',
-    dateRange: [] as string[],
-    gender: '',
-    minAge: undefined as number | undefined,
-    maxAge: undefined as number | undefined,
-    tradeType: ''
-  })
-
-  // // 门诊病历搜索条件
-  // const currentSearch = reactive({
-  //   customerName: '',
-  //   telephone: '',
-  //   diagnosis: '',
-  //   dateRange: [] as string[],
-  //   gender: '',
-  //   minAge: undefined as number | undefined,
-  //   maxAge: undefined as number | undefined,
-  //   tradeType: ''
-  // })
-
-  // // 中药处方搜索条件
-  // const currentSearch = reactive({
-  //   customerName: '',
-  //   telephone: '',
-  //   diagnosis: '',
-  //   dateRange: [] as string[],
-  //   gender: '',
-  //   minAge: undefined as number | undefined,
-  //   maxAge: undefined as number | undefined,
-  //   tradeType: ''
-  // })
-
-  // 表格数据
-  const tableData = ref<OutpatientLogItem[]>([])
-
-  // 分页信息
-  const pagination = reactive({
+  // 统一搜索条件
+  const searchParams = reactive<UnifiedMedicalRecordSearchParams>({
     current: 1,
     size: 20,
-    total: 0
+    data_type: queryType.value,
+    customer_name: '',
+    telephone: '',
+    diagnosis: '',
+    gender: '',
+    min_age: undefined,
+    max_age: undefined,
+    trade_type: '',
+    start_date: '',
+    end_date: ''
   })
+
+  // 日期范围辅助变量
+  const dateRange = ref<string[]>([])
+
+  // 表格数据
+  const tableData = ref<UnifiedMedicalRecord[]>([])
+
+  // 分页总数（从 searchParams 中获取 current 和 size）
+  const totalCount = ref(0)
 
   // 详情弹窗
   const detailVisible = ref(false)
-  const selectedItem = ref<OutpatientLogItem | null>(null)
+  const selectedItem = ref<UnifiedMedicalRecord | null>(null)
 
   // 计算属性
   const hasData = computed(() => tableData.value.length > 0)
@@ -717,11 +501,11 @@
 
     const conditions = [queryTypeNames[queryType.value], '查询结果']
 
-    if (currentSearch.customerName) {
-      conditions.push(`姓名${currentSearch.customerName}`)
+    if (searchParams.customer_name) {
+      conditions.push(`姓名${searchParams.customer_name}`)
     }
-    if (currentSearch.dateRange && currentSearch.dateRange.length === 2) {
-      conditions.push(`${currentSearch.dateRange[0]}_至_${currentSearch.dateRange[1]}`)
+    if (dateRange.value && dateRange.value.length === 2) {
+      conditions.push(`${dateRange.value[0]}_至_${dateRange.value[1]}`)
     }
 
     return generateExportFilename('', conditions)
@@ -739,15 +523,13 @@
       }
     } catch (error) {
       console.error('加载医师列表失败:', error)
-      doctorList.value = [
-        { id: 1, name: '李明' },
-        { id: 2, name: '张丽' }
-      ]
+      doctorList.value = []
     }
   }
 
   // 查询类型变化
   const handleQueryTypeChange = async () => {
+    searchParams.data_type = queryType.value
     handleSearch()
   }
 
@@ -757,51 +539,27 @@
     hasError.value = false
 
     try {
-      // 统一使用门诊日志API的查询参数
-      let params: OutpatientLogSearchParams = {
-        current: pagination.current,
-        size: pagination.size,
-        data_type: queryType.value // 根据查询类型过滤数据
+      // 同步日期范围到 searchParams
+      if (dateRange.value && dateRange.value.length === 2) {
+        searchParams.start_date = dateRange.value[0]
+        searchParams.end_date = dateRange.value[1]
+      } else {
+        searchParams.start_date = ''
+        searchParams.end_date = ''
       }
 
-      // 构建通用查询参数
-      if (currentSearch.customerName) {
-        params.customer_name = currentSearch.customerName
-      }
-      if (currentSearch.telephone) {
-        params.telephone = currentSearch.telephone
-      }
-      if (currentSearch.diagnosis) {
-        params.diagnosis = currentSearch.diagnosis
-      }
-      if (currentSearch.gender) {
-        params.gender = currentSearch.gender
-      }
-      if (currentSearch.minAge !== undefined) {
-        params.min_age = currentSearch.minAge
-      }
-      if (currentSearch.maxAge !== undefined) {
-        params.max_age = currentSearch.maxAge
-      }
-      if (currentSearch.tradeType) {
-        params.trade_type = currentSearch.tradeType
-      }
+      // 确保数据类型匹配
+      searchParams.data_type = queryType.value
 
-      // 日期范围
-      if (currentSearch.dateRange && currentSearch.dateRange.length === 2) {
-        params.start_date = currentSearch.dateRange[0]
-        params.end_date = currentSearch.dateRange[1]
-      }
-
-      console.log('统一查询参数:', params)
+      console.log('统一查询参数:', searchParams)
 
       // 使用统一的门诊日志API
-      const response = await getOutpatientLogList(params)
+      const response = await getOutpatientLogList(searchParams)
 
       if (response.code === 200) {
         // 统一的数据格式，无需转换
         tableData.value = response.data.records
-        pagination.total = response.data.total
+        totalCount.value = response.data.total
 
         console.log(`查询完成，共找到 ${response.data.total} 条记录`)
         ElMessage.success(`查询完成，共找到 ${response.data.total} 条记录`)
@@ -809,14 +567,14 @@
         console.error('查询响应错误:', response)
         ElMessage.error(response.message || '查询失败')
         tableData.value = []
-        pagination.total = 0
+        totalCount.value = 0
       }
     } catch (error) {
       console.error('查询失败:', error)
       hasError.value = true
       ElMessage.error('查询失败，请重试')
       tableData.value = []
-      pagination.total = 0
+      totalCount.value = 0
     } finally {
       loading.value = false
     }
@@ -824,44 +582,28 @@
 
   // 重置搜索
   const handleReset = () => {
-    if (queryType.value === 'customer') {
-      Object.assign(currentSearch, {
-        customerName: '',
-        telephone: '',
-        diagnosis: '',
-        dateRange: [],
-        gender: '',
-        minAge: undefined,
-        maxAge: undefined,
-        tradeType: ''
-      })
-    } else if (queryType.value === 'medical') {
-      Object.assign(currentSearch, {
-        customerName: '',
-        telephone: '',
-        diagnosis: '',
-        dateRange: [],
-        gender: '',
-        minAge: undefined,
-        maxAge: undefined,
-        tradeType: ''
-      })
-    } else if (queryType.value === 'prescription') {
-      Object.assign(currentSearch, {
-        customerName: '',
-        telephone: '',
-        diagnosis: '',
-        dateRange: [],
-        gender: '',
-        minAge: undefined,
-        maxAge: undefined,
-        tradeType: ''
-      })
-    }
+    // 重置统一搜索参数
+    Object.assign(searchParams, {
+      current: 1,
+      size: 20,
+      data_type: queryType.value,
+      customer_name: '',
+      telephone: '',
+      diagnosis: '',
+      gender: '',
+      min_age: undefined,
+      max_age: undefined,
+      trade_type: '',
+      start_date: '',
+      end_date: ''
+    })
 
+    // 重置日期范围
+    dateRange.value = []
+
+    // 清空数据
     tableData.value = []
-    pagination.current = 1
-    pagination.total = 0
+    totalCount.value = 0
     hasError.value = false
   }
 
@@ -884,13 +626,13 @@
 
   // 分页处理
   const handleSizeChange = (size: number) => {
-    pagination.size = size
-    pagination.current = 1
+    searchParams.size = size
+    searchParams.current = 1
     handleSearch()
   }
 
   const handleCurrentChange = (current: number) => {
-    pagination.current = current
+    searchParams.current = current
     handleSearch()
   }
 
@@ -906,7 +648,7 @@
     console.log('行数据的所有字段:', Object.keys(row))
     console.log('row.id值:', row.id, '类型:', typeof row.id)
 
-    // 直接使用原始数据，DataInquiryDetail组件现在支持OutpatientLogItem格式
+    // 直接使用原始数据，DataInquiryDetail组件现在支持UnifiedMedicalRecord格式
     selectedItem.value = row
 
     // 打开弹窗

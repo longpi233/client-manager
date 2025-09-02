@@ -12,20 +12,11 @@
       <ElDescriptionsItem label="医师">{{ data.doctor_name }}</ElDescriptionsItem>
       <ElDescriptionsItem label="付数">{{ data.doses }}付</ElDescriptionsItem>
       <ElDescriptionsItem label="诊断" :span="3">{{ data.diagnosis }}</ElDescriptionsItem>
+      <ElDescriptionsItem label="备注">{{ data.note || '-' }}</ElDescriptionsItem>
     </ElDescriptions>
 
-    <!-- <ElDescriptions title="处方信息" :column="1" border style="margin-bottom: 20px">
-      <ElDescriptionsItem label="单付金额">{{
-        formatAmountFromTenThousandths(data.single_dose_amount || 0)
-      }}</ElDescriptionsItem>
-      <ElDescriptionsItem label="总金额">{{
-        formatAmountFromTenThousandths(data.total_amount || 0)
-      }}</ElDescriptionsItem>
-      <ElDescriptionsItem label="备注">{{ data.note || '-' }}</ElDescriptionsItem>
-    </ElDescriptions> -->
-
     <h4 style="margin: 20px 0 10px">处方明细</h4>
-    <ElTable :data="data.prescription || []" border style="width: 100%">
+    <ElTable :data="data.prescription_items || []" border style="width: 100%">
       <ElTableColumn type="index" label="序号" width="60" />
       <ElTableColumn prop="medicine_name" label="中药名称" />
       <ElTableColumn prop="grams" label="克数" width="100">
@@ -44,20 +35,26 @@
     </ElTable>
 
     <!-- 费用汇总 -->
-    <div v-if="data.prescription && data.prescription.length > 0" style="margin-top: 16px">
+    <div
+      v-if="data.prescription_items && data.prescription_items.length > 0"
+      style="margin-top: 16px"
+    >
       <h5 style="margin: 0 0 16px; color: var(--el-text-color-primary)">费用汇总</h5>
       <ElDescriptions :column="4" border>
         <ElDescriptionsItem label="单付金额">
           {{
             formatAmountFromTenThousandths(
-              data.prescription.reduce((sum: number, item: any) => sum + (item.total_price || 0), 0)
+              data.prescription_items.reduce(
+                (sum: number, item: any) => sum + (item.total_price || 0),
+                0
+              )
             )
           }}
         </ElDescriptionsItem>
         <ElDescriptionsItem label="总金额">
           {{
             formatAmountFromTenThousandths(
-              data.prescription.reduce(
+              data.prescription_items.reduce(
                 (sum: number, item: any) => sum + (item.total_price || 0),
                 0
               ) * (data?.doses || 1)
@@ -75,12 +72,12 @@
     formatGender,
     formatAmountFromTenThousandths
   } from '@/utils/dataprocess/medicalFormatter'
-  import type { OutpatientLogItem } from '@/api/outpatientLogApi'
+  import type { UnifiedMedicalRecord } from '@/types/medical'
 
   defineOptions({ name: 'PrescriptionDetail' })
 
   interface Props {
-    data: OutpatientLogItem
+    data: UnifiedMedicalRecord
   }
 
   defineProps<Props>()

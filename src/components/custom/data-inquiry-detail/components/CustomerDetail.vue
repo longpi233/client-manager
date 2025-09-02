@@ -6,7 +6,7 @@
         {{ formatGender(data.gender) }}
       </ElDescriptionsItem>
       <ElDescriptionsItem label="年龄">{{ data.age }}岁</ElDescriptionsItem>
-      <ElDescriptionsItem label="联系电话">{{ data.phone || data.telephone }}</ElDescriptionsItem>
+      <ElDescriptionsItem label="联系电话">{{ data.telephone }}</ElDescriptionsItem>
       <ElDescriptionsItem label="就诊时间">{{
         formatDateTime(data.time_of_visit)
       }}</ElDescriptionsItem>
@@ -86,12 +86,12 @@
     formatAmountFromTenThousandths,
     getTradeTypeName
   } from '@/utils/dataprocess/medicalFormatter'
-  import type { OutpatientLogItem } from '@/api/outpatientLogApi'
+  import type { UnifiedMedicalRecord } from '@/types/medical'
 
   defineOptions({ name: 'CustomerDetail' })
 
   interface Props {
-    data: OutpatientLogItem
+    data: UnifiedMedicalRecord
   }
 
   defineProps<Props>()

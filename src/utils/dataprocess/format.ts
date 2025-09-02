@@ -72,14 +72,10 @@ export function formatAmount(amount: number | string): string {
 
 // 格式化金额（从分转为元显示）
 // 格式化金额（从万分转为元显示）
-export function formatAmountFromTenThousandths(tenThousandths: number | string): string {
+export function formatAmountFromTenThousandths(tenThousandths: number): string {
   if (!tenThousandths || tenThousandths === 0) return '¥0.0000'
-
-  const num = typeof tenThousandths === 'string' ? parseInt(tenThousandths) : tenThousandths
-  if (isNaN(num)) return '¥0.0000'
-
   // 万分转元：除以10000
-  const yuan = num / 10000
+  const yuan = tenThousandths / 10000
   return `¥${yuan.toFixed(4)}`
 }
 

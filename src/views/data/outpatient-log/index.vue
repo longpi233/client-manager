@@ -19,7 +19,7 @@
           <ElCol :span="6">
             <ElFormItem label="查询类型">
               <ElSelect
-                v-model="searchParams.queryType"
+                v-model="queryConfig.queryType"
                 placeholder="请选择查询类型"
                 style="width: 100%"
                 @change="handleQueryTypeChange"
@@ -31,9 +31,9 @@
             </ElFormItem>
           </ElCol>
           <ElCol :span="6">
-            <ElFormItem v-if="searchParams.queryType === 'month'" label="查询月份">
+            <ElFormItem v-if="queryConfig.queryType === 'month'" label="查询月份">
               <ElDatePicker
-                v-model="searchParams.month"
+                v-model="queryConfig.month"
                 type="month"
                 placeholder="请选择查询月份"
                 format="YYYY年MM月"
@@ -42,9 +42,9 @@
                 @change="handleSearch"
               />
             </ElFormItem>
-            <ElFormItem v-else-if="searchParams.queryType === 'year'" label="查询年份">
+            <ElFormItem v-else-if="queryConfig.queryType === 'year'" label="查询年份">
               <ElDatePicker
-                v-model="searchParams.year"
+                v-model="queryConfig.year"
                 type="year"
                 placeholder="请选择查询年份"
                 format="YYYY年"
@@ -53,9 +53,9 @@
                 @change="handleSearch"
               />
             </ElFormItem>
-            <ElFormItem v-else-if="searchParams.queryType === 'custom'" label="日期范围">
+            <ElFormItem v-else-if="queryConfig.queryType === 'custom'" label="日期范围">
               <ElDatePicker
-                v-model="searchParams.dateRange"
+                v-model="queryConfig.dateRange"
                 type="daterange"
                 range-separator="至"
                 start-placeholder="开始日期"
@@ -70,32 +70,38 @@
           <ElCol :span="6">
             <ElFormItem label="数据类型">
               <ElSelect
-                v-model="searchParams.dataType"
+                v-model="searchParams.data_type"
                 placeholder="请选择数据类型"
                 clearable
                 style="width: 100%"
                 @change="handleSearch"
               >
                 <ElOption label="全部" value="" />
-                <ElOption label="散客登记" value="customer" />
-                <ElOption label="门诊病历" value="medical" />
-                <ElOption label="中药处方" value="prescription" />
+                <ElOption
+                  v-for="option in RECORD_TYPE_OPTIONS"
+                  :key="option.value"
+                  :label="option.label"
+                  :value="option.value"
+                />
               </ElSelect>
             </ElFormItem>
           </ElCol>
           <ElCol :span="6">
             <ElFormItem label="结算类型">
               <ElSelect
-                v-model="searchParams.tradeType"
+                v-model="searchParams.trade_type"
                 placeholder="请选择结算类型"
                 clearable
                 style="width: 100%"
                 @change="handleSearch"
               >
                 <ElOption label="全部" value="" />
-                <ElOption label="现金结算" value="1" />
-                <ElOption label="省直医保" value="2" />
-                <ElOption label="武汉医保" value="3" />
+                <ElOption
+                  v-for="option in TRADE_TYPE_OPTIONS"
+                  :key="option.value"
+                  :label="option.label"
+                  :value="option.value"
+                />
               </ElSelect>
             </ElFormItem>
           </ElCol>
@@ -123,9 +129,16 @@
             :data="
               allSearchResults.map((item) => ({
                 ...item,
-                treatment_items: undefined,
-                raw_data: undefined,
-                prescription: undefined
+                treatment_items: Array.isArray(item.treatment_items)
+                  ? item.treatment_items
+                      .map((i) => i.treatment_item || JSON.stringify(i))
+                      .join(', ')
+                  : item.treatment_items,
+                prescription_items: Array.isArray(item.prescription_items)
+                  ? item.prescription_items
+                      .map((i) => i.medicine_name || JSON.stringify(i))
+                      .join(', ')
+                  : item.prescription_items
               }))
             "
             :columns="exportColumns"
@@ -213,8 +226,8 @@
         </ElTableColumn>
         <ElTableColumn prop="amount" label="结算金额" width="120" align="right">
           <template #default="{ row }">
-            <span v-if="row.amount" class="amount-text">
-              {{ formatAmountFromTenThousandths(row.amount) }}
+            <span v-if="row.total_amount" class="amount-text">
+              {{ formatAmountFromTenThousandths(row.total_amount) }}
             </span>
             <span v-else class="text-placeholder">-</span>
           </template>
@@ -232,9 +245,9 @@
       <!-- 分页 -->
       <div class="pagination-wrapper">
         <ElPagination
-          v-model:current-page="pagination.current"
-          v-model:page-size="pagination.size"
-          :total="pagination.total"
+          v-model:current-page="searchParams.current"
+          v-model:page-size="searchParams.size"
+          :total="totalCount"
           :page-sizes="[10, 20, 50, 100]"
           layout="total, sizes, prev, pager, next, jumper"
           @size-change="handleSizeChange"
@@ -399,9 +412,9 @@
   import {
     getOutpatientLogList,
     deleteOutpatientLogItem,
-    deleteOutpatientLogItemsBatch,
-    type OutpatientLogItem
+    deleteOutpatientLogItemsBatch
   } from '@/api/outpatientLogApi'
+  import type { UnifiedMedicalRecord, UnifiedMedicalRecordSearchParams } from '@/types/medical'
   import { getInstitutionInfo } from '@/api/institutionApi'
   import ArtLineChart from '@/components/core/charts/art-line-chart/index.vue'
   import ArtRingChart from '@/components/core/charts/art-ring-chart/index.vue'
@@ -418,18 +431,26 @@
     generateExportFilename
   } from '@/utils/dataprocess/medicalFormatter'
   import { convertTenThousandthsToYuan } from '@/utils/dataprocess/format'
-  import { RecordType } from '@/api/unifiedMedicalRecordApi'
+  import { RECORD_TYPE_OPTIONS, TRADE_TYPE_OPTIONS } from '@/types/medical'
 
   defineOptions({ name: 'OutpatientLog' })
 
-  // 搜索参数
-  const searchParams = reactive({
+  // 统一搜索参数
+  const searchParams = reactive<UnifiedMedicalRecordSearchParams>({
+    current: 1,
+    size: 20,
+    start_date: '',
+    end_date: '',
+    data_type: undefined,
+    trade_type: ''
+  })
+
+  // 查询类型辅助参数
+  const queryConfig = reactive({
     queryType: 'month', // month, year, custom
     month: '',
     year: '',
-    dateRange: [] as string[],
-    dataType: RecordType,
-    tradeType: ''
+    dateRange: [] as string[]
   })
 
   // 加载状态
@@ -440,24 +461,20 @@
   const doctorList = ref<{ id: number; name: string }[]>([])
 
   // 表格数据
-  const tableData = ref<OutpatientLogItem[]>([])
+  const tableData = ref<UnifiedMedicalRecord[]>([])
 
   // 所有搜索结果（用于统计）
-  const allSearchResults = ref<OutpatientLogItem[]>([])
+  const allSearchResults = ref<UnifiedMedicalRecord[]>([])
 
-  // 分页信息
-  const pagination = reactive({
-    current: 1,
-    size: 20,
-    total: 0
-  })
+  // 分页总数（从 searchParams 中获取 current 和 size）
+  const totalCount = ref(0)
 
   // 详情弹窗
   const detailVisible = ref(false)
-  const selectedItem = ref<OutpatientLogItem | null>(null)
+  const selectedItem = ref<UnifiedMedicalRecord | null>(null)
 
   // 选择和删除相关
-  const selectedItems = ref<OutpatientLogItem[]>([])
+  const selectedItems = ref<UnifiedMedicalRecord[]>([])
   const batchDeleting = ref(false)
   const tableRef = ref()
 
@@ -482,7 +499,7 @@
       else if (item.data_type === 'prescription') stats.prescriptionCount++
 
       // 统计金额
-      if (item.amount) stats.totalAmount += item.amount
+      if (item.total_amount) stats.totalAmount += item.total_amount
 
       // 统计结算类型（使用标准化函数）
       const normalizedTradeType = normalizeTradeType(item.trade_type)
@@ -507,10 +524,10 @@
     const dailyRevenue = new Map<string, number>()
 
     allSearchResults.value.forEach((item) => {
-      if (item.amount && item.time_of_visit) {
+      if (item.total_amount && item.time_of_visit) {
         const date = item.time_of_visit.split(' ')[0] // 提取日期部分
         const currentAmount = dailyRevenue.get(date) || 0
-        dailyRevenue.set(date, currentAmount + item.amount)
+        dailyRevenue.set(date, currentAmount + item.total_amount)
       }
     })
 
@@ -543,15 +560,15 @@
   const dataTypeChartData = computed(() => {
     const customerAmount = allSearchResults.value
       .filter((item) => item.data_type === 'customer')
-      .reduce((sum, item) => sum + (item.amount || 0), 0)
+      .reduce((sum, item) => sum + (item.total_amount || 0), 0)
 
     const medicalAmount = allSearchResults.value
       .filter((item) => item.data_type === 'medical')
-      .reduce((sum, item) => sum + (item.amount || 0), 0)
+      .reduce((sum, item) => sum + (item.total_amount || 0), 0)
 
     const prescriptionAmount = allSearchResults.value
       .filter((item) => item.data_type === 'prescription')
-      .reduce((sum, item) => sum + (item.amount || 0), 0)
+      .reduce((sum, item) => sum + (item.total_amount || 0), 0)
 
     return [
       { name: '散客登记', value: convertToYuan(customerAmount) },
@@ -583,15 +600,15 @@
   const tradeTypeChartData = computed(() => {
     const cashAmount = allSearchResults.value
       .filter((item) => normalizeTradeType(item.trade_type) === '1')
-      .reduce((sum, item) => sum + (item.amount || 0), 0)
+      .reduce((sum, item) => sum + (item.total_amount || 0), 0)
 
     const provincialInsuranceAmount = allSearchResults.value
       .filter((item) => normalizeTradeType(item.trade_type) === '2')
-      .reduce((sum, item) => sum + (item.amount || 0), 0)
+      .reduce((sum, item) => sum + (item.total_amount || 0), 0)
 
     const wuhanInsuranceAmount = allSearchResults.value
       .filter((item) => normalizeTradeType(item.trade_type) === '3')
-      .reduce((sum, item) => sum + (item.amount || 0), 0)
+      .reduce((sum, item) => sum + (item.total_amount || 0), 0)
 
     return [
       { name: '现金结算', value: convertToYuan(cashAmount) },
@@ -648,22 +665,22 @@
   // 生成导出文件名
   const generateOutpatientExportFilename = (): string => {
     let periodText = ''
-    if (searchParams.queryType === 'month' && searchParams.month) {
-      periodText = `${searchParams.month}月份`
-    } else if (searchParams.queryType === 'year' && searchParams.year) {
-      periodText = `${searchParams.year}年度`
-    } else if (searchParams.queryType === 'custom' && searchParams.dateRange.length === 2) {
-      periodText = `${searchParams.dateRange[0]}_至_${searchParams.dateRange[1]}`
+    if (queryConfig.queryType === 'month' && queryConfig.month) {
+      periodText = `${queryConfig.month}月份`
+    } else if (queryConfig.queryType === 'year' && queryConfig.year) {
+      periodText = `${queryConfig.year}年度`
+    } else if (queryConfig.queryType === 'custom' && queryConfig.dateRange.length === 2) {
+      periodText = `${queryConfig.dateRange[0]}_至_${queryConfig.dateRange[1]}`
     } else {
       periodText = '全部数据'
     }
 
     const conditions = ['门诊日志', periodText]
-    if (searchParams.dataType) {
-      conditions.push(getDataTypeName(searchParams.dataType as unknown as RecordType))
+    if (searchParams.data_type) {
+      conditions.push(getDataTypeName(searchParams.data_type))
     }
-    if (searchParams.tradeType) {
-      conditions.push(getTradeTypeName(searchParams.tradeType))
+    if (searchParams.trade_type) {
+      conditions.push(getTradeTypeName(searchParams.trade_type))
     }
 
     return generateExportFilename('', conditions)
@@ -691,28 +708,28 @@
   // 查询类型变化处理
   const handleQueryTypeChange = () => {
     // 清空其他查询条件
-    searchParams.month = ''
-    searchParams.year = ''
-    searchParams.dateRange = []
+    queryConfig.month = ''
+    queryConfig.year = ''
+    queryConfig.dateRange = []
     tableData.value = []
-    pagination.current = 1
-    pagination.total = 0
+    searchParams.current = 1
+    totalCount.value = 0
   }
 
   // 执行搜索
   const handleSearch = async () => {
     // 根据查询类型验证参数
-    if (searchParams.queryType === 'month' && !searchParams.month) {
+    if (queryConfig.queryType === 'month' && !queryConfig.month) {
       ElMessage.warning('请选择查询月份')
       return
     }
-    if (searchParams.queryType === 'year' && !searchParams.year) {
+    if (queryConfig.queryType === 'year' && !queryConfig.year) {
       ElMessage.warning('请选择查询年份')
       return
     }
     if (
-      searchParams.queryType === 'custom' &&
-      (!searchParams.dateRange || searchParams.dateRange.length !== 2)
+      queryConfig.queryType === 'custom' &&
+      (!queryConfig.dateRange || queryConfig.dateRange.length !== 2)
     ) {
       ElMessage.warning('请选择日期范围')
       return
@@ -722,44 +739,31 @@
     hasError.value = false
 
     try {
-      let startDate: string
-      let endDate: string
-
       // 根据查询类型构建日期范围
-      if (searchParams.queryType === 'month') {
-        const [year, month] = searchParams.month.split('-')
-        startDate = `${year}-${month}-01`
+      if (queryConfig.queryType === 'month') {
+        const [year, month] = queryConfig.month.split('-')
+        searchParams.start_date = `${year}-${month}-01`
         // 修复月末日期计算：使用下个月的第0天来获取当前月的最后一天
         const lastDay = new Date(Number(year), Number(month), 0).getDate()
-        endDate = `${year}-${month}-${String(lastDay).padStart(2, '0')}`
-      } else if (searchParams.queryType === 'year') {
-        startDate = `${searchParams.year}-01-01`
-        endDate = `${searchParams.year}-12-31`
-      } else if (searchParams.queryType === 'custom') {
-        startDate = searchParams.dateRange[0]
-        endDate = searchParams.dateRange[1]
+        searchParams.end_date = `${year}-${month}-${String(lastDay).padStart(2, '0')}`
+      } else if (queryConfig.queryType === 'year') {
+        searchParams.start_date = `${queryConfig.year}-01-01`
+        searchParams.end_date = `${queryConfig.year}-12-31`
+      } else if (queryConfig.queryType === 'custom') {
+        searchParams.start_date = queryConfig.dateRange[0]
+        searchParams.end_date = queryConfig.dateRange[1]
       } else {
         throw new Error('无效的查询类型')
       }
 
-      // 调用统一的门诊日志API
-      console.log('门诊日志查询参数:', {
-        current: 1,
-        size: 10000,
-        start_date: startDate,
-        end_date: endDate,
-        data_type: searchParams.dataType || undefined,
-        trade_type: searchParams.tradeType || undefined
-      })
+      // 设置获取所有数据的参数
+      searchParams.current = 1
+      searchParams.size = 10000
 
-      const response = await getOutpatientLogList({
-        current: 1, // 始终从第一页开始获取所有数据
-        size: 10000, // 设置足够大的数量以获取所有数据
-        start_date: startDate,
-        end_date: endDate,
-        data_type: (searchParams.dataType as unknown as RecordType) || undefined,
-        trade_type: searchParams.tradeType || undefined
-      })
+      console.log('门诊日志查询参数:', searchParams)
+
+      // 使用统一的门诊日志API
+      const response = await getOutpatientLogList(searchParams)
 
       console.log('门诊日志API响应:', response)
 
@@ -775,8 +779,8 @@
         )
 
         // 重置分页到第一页
-        pagination.current = 1
-        pagination.total = total
+        searchParams.current = 1
+        totalCount.value = total
 
         // 更新表格数据
         updateTableData()
@@ -786,7 +790,7 @@
         ElMessage.error(response.message || '查询失败')
         tableData.value = []
         allSearchResults.value = []
-        pagination.total = 0
+        totalCount.value = 0
       }
     } catch (error) {
       console.error('查询失败:', error)
@@ -794,7 +798,7 @@
       ElMessage.error('查询失败，请重试')
       tableData.value = []
       allSearchResults.value = []
-      pagination.total = 0
+      totalCount.value = 0
     } finally {
       loading.value = false
     }
@@ -802,19 +806,26 @@
 
   // 重置搜索
   const handleReset = () => {
-    Object.assign(searchParams, {
+    Object.assign(queryConfig, {
       queryType: 'month',
       month: '',
       year: '',
-      dateRange: [],
-      dataType: '',
-      tradeType: ''
+      dateRange: []
+    })
+
+    Object.assign(searchParams, {
+      current: 1,
+      size: 20,
+      start_date: '',
+      end_date: '',
+      data_type: undefined,
+      trade_type: ''
     })
 
     tableData.value = []
     allSearchResults.value = []
-    pagination.current = 1
-    pagination.total = 0
+    searchParams.current = 1
+    totalCount.value = 0
     hasError.value = false
   }
 
@@ -830,24 +841,24 @@
 
   // 分页处理
   const handleSizeChange = (size: number) => {
-    pagination.size = size
-    pagination.current = 1
+    searchParams.size = size
+    searchParams.current = 1
     updateTableData()
   }
 
   const handleCurrentChange = (current: number) => {
-    pagination.current = current
+    searchParams.current = current
     updateTableData()
   }
 
   // 更新表格数据（仅分页，不重新搜索）
   const updateTableData = () => {
-    const startIndex = (pagination.current - 1) * pagination.size
-    const endIndex = startIndex + pagination.size
+    const startIndex = (searchParams.current - 1) * searchParams.size
+    const endIndex = startIndex + searchParams.size
     tableData.value = allSearchResults.value.slice(startIndex, endIndex)
 
     // 更新分页总数
-    pagination.total = allSearchResults.value.length
+    totalCount.value = allSearchResults.value.length
   }
 
   // 排序处理
@@ -870,18 +881,23 @@
   }
 
   // 查看详情
-  const handleViewDetail = (row: OutpatientLogItem) => {
+  const handleViewDetail = (row: UnifiedMedicalRecord) => {
     selectedItem.value = row
     detailVisible.value = true
   }
 
   // 选择变化处理
-  const handleSelectionChange = (selection: OutpatientLogItem[]) => {
+  const handleSelectionChange = (selection: UnifiedMedicalRecord[]) => {
     selectedItems.value = selection
   }
 
   // 删除单个记录
-  const handleDeleteItem = async (row: OutpatientLogItem) => {
+  const handleDeleteItem = async (row: UnifiedMedicalRecord) => {
+    if (!row.id) {
+      ElMessage.error('无效的记录ID')
+      return
+    }
+
     try {
       await ElMessageBox.confirm(
         `确定要删除患者 "${row.customer_name}" 的这条记录吗？删除后不可恢复。`,
@@ -918,6 +934,13 @@
       return
     }
 
+    for (const item of selectedItems.value) {
+      if (!item.id) {
+        ElMessage.error('无效的记录ID')
+        return
+      }
+    }
+
     try {
       await ElMessageBox.confirm(
         `确定要删除选中的 ${selectedItems.value.length} 条记录吗？删除后不可恢复。`,
@@ -932,7 +955,7 @@
 
       batchDeleting.value = true
 
-      const ids = selectedItems.value.map((item) => item.id)
+      const ids = selectedItems.value.map((item) => item.id as number)
       const response = await deleteOutpatientLogItemsBatch(ids)
 
       if (response.code === 200) {
@@ -957,12 +980,12 @@
 
   // 获取查询时间段文本
   const getQueryPeriodText = () => {
-    if (searchParams.queryType === 'month' && searchParams.month) {
-      return `${searchParams.month}月份`
-    } else if (searchParams.queryType === 'year' && searchParams.year) {
-      return `${searchParams.year}年全年`
-    } else if (searchParams.queryType === 'custom' && searchParams.dateRange.length === 2) {
-      return `${searchParams.dateRange[0]} 至 ${searchParams.dateRange[1]}`
+    if (queryConfig.queryType === 'month' && queryConfig.month) {
+      return `${queryConfig.month}月份`
+    } else if (queryConfig.queryType === 'year' && queryConfig.year) {
+      return `${queryConfig.year}年全年`
+    } else if (queryConfig.queryType === 'custom' && queryConfig.dateRange.length === 2) {
+      return `${queryConfig.dateRange[0]} 至 ${queryConfig.dateRange[1]}`
     }
     return '当前查询'
   }
@@ -974,7 +997,7 @@
 
     // 设置默认月份为当前月份
     const now = new Date()
-    searchParams.month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+    queryConfig.month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
 
     // 默认加载当前月份数据
     handleSearch()
@@ -1048,7 +1071,7 @@
           font-weight: bold;
           color: var(--el-color-primary);
 
-          &.amount {
+          &.total_amount {
             color: var(--el-color-success);
           }
         }
@@ -1096,7 +1119,7 @@
       }
     }
 
-    .amount-text {
+    .total_amount-text {
       font-weight: bold;
       color: var(--el-color-success);
     }
@@ -1106,7 +1129,7 @@
     }
 
     :deep(.el-table) {
-      .amount-text {
+      .total_amount-text {
         font-weight: bold;
         color: var(--el-color-success);
       }

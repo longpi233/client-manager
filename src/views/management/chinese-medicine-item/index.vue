@@ -112,9 +112,9 @@
             clearable
           />
         </ElFormItem>
-        <ElFormItem label="单价（元/克）" prop="price">
+        <ElFormItem label="单价（元/克）" prop="unit_price">
           <ElInputNumber
-            v-model="editForm.price"
+            v-model="editForm.unit_price"
             :min="0"
             :precision="4"
             :step="0.01"
@@ -122,11 +122,11 @@
             @change="handlePricePerGramChange"
           />
         </ElFormItem>
-        <ElFormItem label="单价（元/千克）">
+        <ElFormItem label="单价（元/千克）" prop="unit_pricePerKg">
           <ElInputNumber
-            v-model="editForm.pricePerKg"
+            v-model="editForm.unit_pricePerKg"
             :min="0"
-            :precision="2"
+            :precision="1"
             :step="1"
             style="width: 100%"
             @change="handlePricePerKgChange"
@@ -156,6 +156,7 @@
   import type { FormInstance, FormRules } from 'element-plus'
   import {
     convertYuanToTenThousandths,
+    formatAmountFromTenThousandths,
     convertTenThousandthsToYuan
   } from '@/utils/dataprocess/format'
 
@@ -180,8 +181,8 @@
   const editForm = ref({
     name: '',
     description: '',
-    price: 0, // 元/克
-    pricePerKg: 0 // 元/千克
+    unit_price: 0, // 元/克
+    unit_pricePerKg: 0 // 元/千克
   })
 
   // 表单验证规则
@@ -190,8 +191,12 @@
       { required: true, message: '请输入中药名称', trigger: 'blur' },
       { min: 1, max: 50, message: '名称长度在 1 到 50 个字符', trigger: 'blur' }
     ],
-    price: [
+    unit_price: [
       { required: true, message: '请输入单价', trigger: 'blur' },
+      { type: 'number', min: 0, message: '单价不能小于0', trigger: 'blur' }
+    ],
+    unit_pricePerKg: [
+      { required: true, message: '请输入单价（元/千克）', trigger: 'blur' },
       { type: 'number', min: 0, message: '单价不能小于0', trigger: 'blur' }
     ]
   }
@@ -292,14 +297,14 @@
           label: '单价（元/克）',
           sortable: true,
           width: 140,
-          formatter: (row) => `¥${convertTenThousandthsToYuan(row.price).toFixed(4)}` // 将万分转换为元显示
+          formatter: (row) => `${formatAmountFromTenThousandths(row.unit_price)}` // 将万分转换为元显示
         },
         {
           prop: 'pricePerKg',
           label: '单价（元/千克）',
           sortable: true,
           width: 140,
-          formatter: (row) => `¥${(convertTenThousandthsToYuan(row.price) * 1000).toFixed(2)}` // 元/克转换为元/千克显示
+          formatter: (row) => `${formatAmountFromTenThousandths(row.unit_price * 1000)}` // 元/克转换为元/千克显示
         },
         {
           prop: 'operation',
@@ -380,20 +385,20 @@
   const handlePricePerGramChange = (value: number | undefined) => {
     if (value !== undefined && value !== null) {
       // 1克 = 0.001千克，所以 元/千克 = 元/克 * 1000
-      editForm.value.pricePerKg = Number((value * 1000).toFixed(2))
+      editForm.value.unit_pricePerKg = Number((value * 1000).toFixed(2))
     } else {
-      editForm.value.price = 0
-      editForm.value.pricePerKg = 0
+      editForm.value.unit_price = 0
+      editForm.value.unit_pricePerKg = 0
     }
   }
 
   const handlePricePerKgChange = (value: number | undefined) => {
     if (value !== undefined && value !== null) {
       // 1千克 = 1000克，所以 元/克 = 元/千克 / 1000
-      editForm.value.price = Number((value / 1000).toFixed(4))
+      editForm.value.unit_price = Number((value / 1000).toFixed(4))
     } else {
-      editForm.value.price = 0
-      editForm.value.pricePerKg = 0
+      editForm.value.unit_price = 0
+      editForm.value.unit_pricePerKg = 0
     }
   }
 
@@ -431,10 +436,10 @@
         return
       }
 
-      const newItem: Api.ChineseMedicine.CreateParams = {
+      const newItem: Api.ChineseMedicine.Item = {
         name: '新增中药',
         description: '',
-        price: convertYuanToTenThousandths(10) // 默认10元，转换为分
+        unit_price: convertYuanToTenThousandths(10) // 默认10元，转换为分
       }
 
       const response = await chineseMedicineApi.createChineseMedicineItem(newItem)
@@ -451,12 +456,12 @@
 
   const handleEdit = (row: Api.ChineseMedicine.Item) => {
     currentEditingItem.value = row
-    const priceInYuan = convertTenThousandthsToYuan(row.price) // 将分转换为元显示
+    const priceInYuan = convertTenThousandthsToYuan(row.unit_price) // 将分转换为元显示
     editForm.value = {
       name: row.name,
       description: row.description || '',
-      price: priceInYuan, // 元/克
-      pricePerKg: Number((priceInYuan * 1000).toFixed(2)) // 元/千克
+      unit_price: priceInYuan, // 元/克
+      unit_pricePerKg: Number((priceInYuan * 1000).toFixed(2)) // 元/千克
     }
     editDialogVisible.value = true
   }
@@ -466,8 +471,8 @@
     editForm.value = {
       name: '',
       description: '',
-      price: 0,
-      pricePerKg: 0
+      unit_price: 0,
+      unit_pricePerKg: 0
     }
     currentEditingItem.value = null
     editFormRef.value?.clearValidate()
@@ -487,11 +492,11 @@
 
       editFormLoading.value = true
 
-      const updateParams: Api.ChineseMedicine.UpdateParams = {
+      const updateParams: Api.ChineseMedicine.Item = {
         id: currentEditingItem.value.id,
         name: editForm.value.name,
         description: editForm.value.description,
-        price: convertYuanToTenThousandths(editForm.value.price) // 将元转换为分
+        unit_price: convertYuanToTenThousandths(editForm.value.unit_price) // 将元转换为分
       }
 
       const response = await chineseMedicineApi.updateChineseMedicineItem(updateParams)

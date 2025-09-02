@@ -13,15 +13,28 @@
     "windows": [
       {
         "title": "维康诊所管理系统",
-        "width": 800,
-        "height": 600,
+        "width": 1200,
+        "height": 800,
         "resizable": true,
-        "fullscreen": false
+        "fullscreen": false,
+        "center": true,
+        "decorations": true,
+        "alwaysOnTop": false,
+        "skipTaskbar": false,
+        "titleBarStyle": "Visible",
+        "hiddenTitle": false,
+        "acceptFirstMouse": false,
+        "tabbingIdentifier": "main",
+        "shadow": true,
+        "windowClassname": "healthclinic-management",
+        "visible": true
       }
     ],
     "security": {
       "csp": null
-    }
+    },
+    "macOSPrivateApi": false,
+    "withGlobalTauri": false
   },
   "bundle": {
     "active": true,

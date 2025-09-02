@@ -158,7 +158,7 @@
                           :key="medicine.id"
                           :label="medicine.name"
                           :value="medicine.name"
-                          :data-price="medicine.price"
+                          :data-price="medicine.unit_price"
                         />
                       </ElSelect>
                     </ElFormItem>
@@ -300,7 +300,7 @@
   import { getInstitutionInfo } from '@/api/institutionApi'
   import { getChineseMedicineList } from '@/api/chineseMedicineApi'
   import { createPrescriptionRecord } from '@/api/unifiedMedicalRecordApi'
-  import { GENDER_OPTIONS, TRADE_TYPE_OPTIONS } from '@/config/common'
+  import { GENDER_OPTIONS, TRADE_TYPE_OPTIONS } from '@/types/medical'
   import {
     printPrescription as printPrescriptionTemplate,
     // printFeeList as printFeeListTemplate,
@@ -374,19 +374,9 @@
         }))
       } else {
         console.error('获取机构信息失败:', res.msg)
-        // 如果API失败，使用默认数据
-        doctorList.value = [
-          { id: 1, name: '李明' },
-          { id: 2, name: '张丽' }
-        ]
       }
     } catch (error) {
       console.error('加载医师列表失败:', error)
-      // 使用默认数据
-      doctorList.value = [
-        { id: 1, name: '李明' },
-        { id: 2, name: '张丽' }
-      ]
     }
   }
 
@@ -407,69 +397,9 @@
         filteredChineseMedicines.value = res.data.records
       } else {
         console.error('获取中药列表失败:', res.msg)
-        // 使用默认数据作为备选
-        const mockChineseMedicines: Api.ChineseMedicine.Item[] = [
-          {
-            id: 1,
-            name: '人参',
-            price: 5000 // 0.5元 = 5000万分
-          },
-          {
-            id: 2,
-            name: '当归',
-            price: 3000 // 0.3元 = 3000万分
-          },
-          {
-            id: 3,
-            name: '黄芪',
-            price: 2000 // 0.2元 = 2000万分
-          },
-          {
-            id: 4,
-            name: '川芎',
-            price: 2500 // 0.25元 = 2500万分
-          },
-          {
-            id: 5,
-            name: '白芍',
-            price: 4000 // 0.4元 = 4000万分
-          }
-        ]
-        chineseMedicines.value = mockChineseMedicines
-        filteredChineseMedicines.value = mockChineseMedicines
       }
     } catch (error) {
       console.error('加载中药列表失败:', error)
-      // 使用默认数据
-      const mockChineseMedicines: Api.ChineseMedicine.Item[] = [
-        {
-          id: 1,
-          name: '人参',
-          price: 5000 // 0.5元 = 5000万分
-        },
-        {
-          id: 2,
-          name: '当归',
-          price: 3000 // 0.3元 = 3000万分
-        },
-        {
-          id: 3,
-          name: '黄芪',
-          price: 2000 // 0.2元 = 2000万分
-        },
-        {
-          id: 4,
-          name: '川芎',
-          price: 2500 // 0.25元 = 2500万分
-        },
-        {
-          id: 5,
-          name: '白芍',
-          price: 4000 // 0.4元 = 4000万分
-        }
-      ]
-      chineseMedicines.value = mockChineseMedicines
-      filteredChineseMedicines.value = mockChineseMedicines
       ElMessage.error('加载中药列表失败')
     }
   }
@@ -515,25 +445,9 @@
     const medicine = chineseMedicines.value.find((item) => item.name === medicineName)
     if (!medicine) return 0
 
-    // medicine.price 以万分为单位存储
-    return medicine.price
+    // medicine.unit_price 以万分为单位存储
+    return medicine.unit_price
   }
-
-  // // 获取项目总价（显示为元）
-  // const getItemTotalPrice = (index: number): string => {
-  //   const medicineName = form.prescription[index]?.medicineName
-  //   const grams = form.prescription[index]?.grams || 0
-
-  //   if (!medicineName || !grams) return '¥0.00'
-
-  //   const medicine = chineseMedicines.value.find((item) => item.name === medicineName)
-  //   if (!medicine) return '¥0.00'
-
-  //   // medicine.price 以万分为单位，计算总价（万分）
-  //   const totalPriceInTenThousandths = medicine.price * grams
-  //   // 转换为元显示
-  //   return formatAmountFromTenThousandths(totalPriceInTenThousandths)
-  // }
 
   // 计算单付金额（显示为元）
   const singleDoseAmountTenThousandths = computed(() => {
@@ -710,6 +624,18 @@
 
       printPrescriptionTemplate(printData)
       ElMessage.success('中药处方打印成功')
+
+      ElMessageBox.confirm('是否确认提交中药处方登记？', '提交登记', {
+        confirmButtonText: '确认',
+        cancelButtonText: '取消',
+        type: 'warning'
+      })
+        .then(() => {
+          submitRegistration()
+        })
+        .catch(() => {
+          // 用户取消提交
+        })
     } catch (error) {
       console.error('打印中药处方失败:', error)
       ElMessage.error('请先完善必填信息')

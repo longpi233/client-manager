@@ -1,144 +1,13 @@
 import { invoke } from '@tauri-apps/api/core'
 
-export enum RecordType {
-  Customer = 'customer',
-  Medical = 'medical',
-  Prescription = 'prescription'
-}
-
-export interface MedicalRecord {
-  id?: number
-  record_type: RecordType
-  customer_name: string
-  gender: string
-  age: number
-  telephone?: string
-  time_of_visit: string
-  trade_type: string
-  diagnosis: string
-  note?: string
-  chief_complaint?: string
-  illness_history?: string
-  physical_examination?: string
-  past_history?: string
-  laboratory_examination?: string
-  treatment_method?: string
-  doses?: number
-  single_dose_amount?: number
-  total_amount: number
-  doctor_id?: number
-  doctor_name?: string
-  status: string
-  created_at: string
-  updated_at: string
-  treatment_items?: TreatmentItemRecord[]
-  prescription_items?: PrescriptionItemRecord[]
-}
-
-export interface TreatmentItemRecord {
-  id?: number
-  medical_record_id: number
-  treatment_item_name: string
-  treatment_count: number
-  unit_price: number
-  total_price: number
-  created_at: string
-}
-
-export interface PrescriptionItemRecord {
-  id?: number
-  medical_record_id: number
-  medicine_name: string
-  grams: number
-  unit_price: number
-  total_price: number
-  created_at: string
-}
-
-export interface TreatmentFormItem {
-  treatment_item: string
-  count: number
-  unit_price?: number
-  total_price?: number
-}
-
-export interface PrescriptionFormItem {
-  medicine_name: string
-  grams: number
-  unit_price?: number // 单价（以分为单位）
-  total_price?: number // 总价（以分为单位）
-}
-
-export interface CreateMedicalRecordParams {
-  record_type: string
-  customer_name: string
-  gender: string
-  age: number
-  telephone?: string
-  time_of_visit: string
-  trade_type: string
-  diagnosis: string
-  note?: string
-  chief_complaint?: string
-  illness_history?: string
-  physical_examination?: string
-  past_history?: string
-  laboratory_examination?: string
-  treatment_method?: string
-  doses?: number
-  single_dose_amount?: number // 单付金额（以分为单位）
-  total_amount?: number // 总金额（以分为单位）
-  treatment_items?: TreatmentFormItem[]
-  prescription_items?: PrescriptionFormItem[]
-  doctor_id?: number
-  doctor_name?: string
-}
-
-export interface QueryMedicalRecordsParams {
-  current: number
-  size: number
-  record_type?: string
-  customer_name?: string
-  telephone?: string
-  diagnosis?: string
-  start_date?: string
-  end_date?: string
-  gender?: string
-  min_age?: number
-  max_age?: number
-  trade_type?: string
-  /** 医师ID */
-  doctor_id?: number
-  /** 医师姓名 */
-  doctor_name?: string
-  /** 主诉（门诊病历） */
-  chief_complaint?: string
-  /** 病史（门诊病历） */
-  illness_history?: string
-  /** 体格检查（门诊病历） */
-  physical_examination?: string
-  /** 既往史（门诊病历） */
-  past_history?: string
-  /** 实验室检查（门诊病历） */
-  laboratory_examination?: string
-  /** 治疗方法（门诊病历） */
-  treatment_method?: string
-  /** 付数（中药处方） */
-  doses?: number
-  /** 最小总金额 */
-  min_amount?: number
-  /** 最大总金额 */
-  max_amount?: number
-  /** 备注 */
-  note?: string
-}
-
-export interface PagedMedicalRecords {
-  records: MedicalRecord[]
-  total: number
-  current: number
-  size: number
-}
+// 导入统一的医疗记录类型
+import { RecordType } from '@/types/medical'
+import type {
+  UnifiedMedicalRecord,
+  UnifiedMedicalRecordSearchParams,
+  UnifiedMedicalRecordResponse,
+  MedicalApiResponse
+} from '@/types/medical'
 
 export interface ApiResponse<T> {
   code: number
@@ -147,61 +16,61 @@ export interface ApiResponse<T> {
 }
 
 export async function createUnifiedMedicalRecord(
-  params: CreateMedicalRecordParams
-): Promise<ApiResponse<number>> {
+  params: UnifiedMedicalRecord
+): Promise<MedicalApiResponse<number>> {
   console.log('创建统一医疗记录:', params)
   return invoke('create_unified_medical_record', { params })
 }
 
 export async function getUnifiedMedicalRecordList(
-  params: QueryMedicalRecordsParams
-): Promise<ApiResponse<PagedMedicalRecords>> {
+  params: UnifiedMedicalRecordSearchParams
+): Promise<MedicalApiResponse<UnifiedMedicalRecordResponse>> {
   console.log('查询统一医疗记录列表:', params)
   return invoke('get_unified_medical_record_list', { params })
 }
 
 export async function getUnifiedMedicalRecordDetail(
   id: number
-): Promise<ApiResponse<MedicalRecord>> {
+): Promise<MedicalApiResponse<UnifiedMedicalRecord>> {
   console.log('获取统一医疗记录详情:', id)
   return invoke('get_unified_medical_record_detail', { id })
 }
 
 // 便捷方法
 export function createCustomerRecord(
-  params: Omit<CreateMedicalRecordParams, 'record_type'>
-): Promise<ApiResponse<number>> {
-  return createUnifiedMedicalRecord({ ...params, record_type: RecordType.Customer })
+  params: Omit<UnifiedMedicalRecord, 'data_type'>
+): Promise<MedicalApiResponse<number>> {
+  return createUnifiedMedicalRecord({ ...params, data_type: RecordType.Customer })
 }
 
 export function createMedicalRecord(
-  params: Omit<CreateMedicalRecordParams, 'record_type'>
-): Promise<ApiResponse<number>> {
-  return createUnifiedMedicalRecord({ ...params, record_type: RecordType.Medical })
+  params: Omit<UnifiedMedicalRecord, 'data_type'>
+): Promise<MedicalApiResponse<number>> {
+  return createUnifiedMedicalRecord({ ...params, data_type: RecordType.Medical })
 }
 
 export function createPrescriptionRecord(
-  params: Omit<CreateMedicalRecordParams, 'record_type'>
-): Promise<ApiResponse<number>> {
-  return createUnifiedMedicalRecord({ ...params, record_type: RecordType.Prescription })
+  params: Omit<UnifiedMedicalRecord, 'data_type'>
+): Promise<MedicalApiResponse<number>> {
+  return createUnifiedMedicalRecord({ ...params, data_type: RecordType.Prescription })
 }
 
 export function getCustomerRecordList(
-  params: Omit<QueryMedicalRecordsParams, 'record_type'>
-): Promise<ApiResponse<PagedMedicalRecords>> {
-  return getUnifiedMedicalRecordList({ ...params, record_type: RecordType.Customer })
+  params: Omit<UnifiedMedicalRecordSearchParams, 'data_type'>
+): Promise<MedicalApiResponse<UnifiedMedicalRecordResponse>> {
+  return getUnifiedMedicalRecordList({ ...params, data_type: RecordType.Customer })
 }
 
-export function getMedicalRecordListLegacy(
-  params: Omit<QueryMedicalRecordsParams, 'record_type'>
-): Promise<ApiResponse<PagedMedicalRecords>> {
-  return getUnifiedMedicalRecordList({ ...params, record_type: RecordType.Medical })
+export function getMedicalRecordList(
+  params: Omit<UnifiedMedicalRecordSearchParams, 'data_type'>
+): Promise<MedicalApiResponse<UnifiedMedicalRecordResponse>> {
+  return getUnifiedMedicalRecordList({ ...params, data_type: RecordType.Medical })
 }
 
 export function getPrescriptionRecordList(
-  params: Omit<QueryMedicalRecordsParams, 'record_type'>
-): Promise<ApiResponse<PagedMedicalRecords>> {
-  return getUnifiedMedicalRecordList({ ...params, record_type: RecordType.Prescription })
+  params: Omit<UnifiedMedicalRecordSearchParams, 'data_type'>
+): Promise<MedicalApiResponse<UnifiedMedicalRecordResponse>> {
+  return getUnifiedMedicalRecordList({ ...params, data_type: RecordType.Prescription })
 }
 
 // 删除医疗记录

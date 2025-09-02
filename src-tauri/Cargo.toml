@@ -1,9 +1,9 @@
 [package]
-name = "app"
-version = "0.1.0"
-description = "A Tauri App"
-authors = ["you"]
-license = ""
+name = "维康诊所管理系统"
+version = "1.0.0"
+description = "诊所管理系统"
+authors = ["long"]
+license = "MIT License"
 repository = ""
 edition = "2021"
 rust-version = "1.77.2"
@@ -29,8 +29,3 @@ rusqlite = { version = "0.32", features = ["bundled", "chrono"] }
 tokio = { version = "1.0", features = ["full"] }
 uuid = { version = "1.0", features = ["v4"] }
 dirs = "5.0"
-
-[features]
-default = ["sqlite-storage"]
-sqlite-storage = []
-memory-storage = []

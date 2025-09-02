@@ -2,7 +2,9 @@
  * 统一打印工具类
  * 支持门诊病历、费用清单、中药处方的打印功能
  */
+import type { UnifiedMedicalRecord, TreatmentItem, PrescriptionItem } from '@/types/medical'
 
+// 为了向后兼容，保留原有接口定义
 export interface PrintableItem {
   id?: number
   customer_name: string
@@ -23,35 +25,23 @@ export interface MedicalRecordData extends PrintableItem {
   past_history?: string
   laboratory_examination?: string
   treatment_method?: string
-  treatment_items?: Array<{
-    treatment_item: string
-    count: number
-    unit_price: number // 单价（分）
-    total_price: number // 总价（分）
-  }>
+  treatment_items?: TreatmentItem[]
 }
 
 export interface PrescriptionData extends PrintableItem {
-  prescription_items?: Array<{
-    medicine_name: string
-    grams: number
-    unit_price?: number // 单价（分）
-    total_price?: number // 总价（分）
-  }>
+  prescription_items?: PrescriptionItem[]
   doses?: number
   single_dose_amount?: number // 单付金额（分）
   total_amount?: number // 总金额（分）
 }
 
 export interface FeeListData extends PrintableItem {
-  treatment_items?: Array<{
-    treatment_item: string
-    count: number
-    unit_price: number // 单价（分）
-    total_price: number // 总价（分）
-  }>
+  treatment_items?: TreatmentItem[]
   total_amount?: number // 总金额（分）
 }
+
+// 新增：统一医疗记录的打印适配器
+export type UnifiedPrintableRecord = UnifiedMedicalRecord
 
 /**
  * 格式化性别显示
@@ -163,11 +153,6 @@ export const printDocument = (
   title: string = '打印文档',
   options: PrintOptions = {}
 ): void => {
-  const printWindow = window.open('', '_blank', 'width=800,height=600')
-  if (!printWindow) {
-    throw new Error('无法打开打印窗口，请检查浏览器弹窗设置')
-  }
-
   const { showPdfOption = true, filename = title } = options
 
   const printContent = `
@@ -489,7 +474,7 @@ export const printDocument = (
         }
 
         // 页面加载完成后移除可能的页眉页脚样式
-        window.onload = function() {
+        window.addEventListener('DOMContentLoaded', function() {
           // 创建样式来隐藏页眉页脚
           const style = document.createElement('style');
           style.textContent = \`
@@ -499,7 +484,7 @@ export const printDocument = (
             }
           \`;
           document.head.appendChild(style);
-        };
+        });
       </script>
       `
           : `
@@ -522,7 +507,7 @@ export const printDocument = (
         }
 
         // 页面加载完成后移除可能的页眉页脚样式
-        window.onload = function() {
+        window.addEventListener('DOMContentLoaded', function() {
           const style = document.createElement('style');
           style.textContent = \`
             @media print {
@@ -531,7 +516,7 @@ export const printDocument = (
             }
           \`;
           document.head.appendChild(style);
-        };
+        });
       </script>
       `
       }
@@ -539,12 +524,33 @@ export const printDocument = (
     </html>
   `
 
-  printWindow.document.open()
-  printWindow.document.write(printContent)
-  printWindow.document.close()
+  // 使用现代方法：创建 Blob URL
+  const blob = new Blob([printContent], { type: 'text/html' })
+  const url = URL.createObjectURL(blob)
 
-  // 等待内容加载完成后聚焦窗口
-  printWindow.onload = () => {
-    printWindow.focus()
+  // 计算窗口居中位置
+  const width = 800
+  const height = 600
+  const left = (screen.width - width) / 2
+  const top = (screen.height - height) / 2
+
+  const printWindow = window.open(
+    url,
+    '_blank',
+    `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
+  )
+  if (!printWindow) {
+    URL.revokeObjectURL(url)
+    throw new Error('无法打开打印窗口，请检查浏览器弹窗设置')
   }
+
+  // 等待窗口加载完成后聚焦
+  printWindow.addEventListener('load', () => {
+    printWindow.focus()
+  })
+
+  // 窗口关闭时清理 URL
+  printWindow.addEventListener('beforeunload', () => {
+    URL.revokeObjectURL(url)
+  })
 }

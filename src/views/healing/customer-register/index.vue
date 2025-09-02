@@ -160,7 +160,9 @@
                     </ElFormItem>
                   </ElCol>
                   <ElCol :span="4">
-                    <div class="price-display">{{ getUnitPrice(index) }}</div>
+                    <div class="price-display">{{
+                      formatAmountFromTenThousandths(getUnitPriceTenThousandths(item.treatmentItem))
+                    }}</div>
                   </ElCol>
                   <ElCol :span="4">
                     <ElFormItem
@@ -180,7 +182,9 @@
                     </ElFormItem>
                   </ElCol>
                   <ElCol :span="4">
-                    <div class="price-display">{{ getItemTotalPrice(index) }}</div>
+                    <div class="price-display">{{
+                      formatAmountFromTenThousandths(totalAmountTenThousandths)
+                    }}</div>
                   </ElCol>
                   <ElCol :span="4">
                     <div class="action-button-wrapper">
@@ -212,7 +216,9 @@
           <ElCol :span="24">
             <div class="total-amount">
               <span class="total-label">总金额：</span>
-              <span class="total-value">¥{{ totalAmount }}</span>
+              <span class="total-value">{{
+                formatAmountFromTenThousandths(totalAmountTenThousandths)
+              }}</span>
             </div>
           </ElCol>
         </ElRow>
@@ -246,11 +252,8 @@
   import { ref, computed, onMounted } from 'vue'
   import { createCustomerRecord } from '@/api/unifiedMedicalRecordApi'
   import { getHealingList } from '@/api/healingApi'
-  import { GENDER_OPTIONS, TRADE_TYPE_OPTIONS } from '@/config/common'
-  import {
-    formatAmountFromTenThousandths,
-    convertTenThousandthsToYuan
-  } from '@/utils/dataprocess/format'
+  import { GENDER_OPTIONS, TRADE_TYPE_OPTIONS } from '@/types/medical'
+  import { formatAmountFromTenThousandths } from '@/utils/dataprocess/format'
 
   // 前端表单数据接口
   interface CustomerForm {
@@ -378,50 +381,50 @@
     }
   }
 
-  // 获取单价（显示为元）
-  const getUnitPrice = (index: number): string => {
-    const itemName = form.value.treatment[index]?.treatmentItem
-    if (!itemName) return '-'
-
-    const item = healingItems.value.find((item) => item.name === itemName)
-    if (!item) return '-'
-
-    // item.price 假设以万分为单位存储，转换为元显示
-    return formatAmountFromTenThousandths(item.price)
+  const getUnitPriceTenThousandths = (name: string): number => {
+    const item = healingItems.value.find((item) => item.name === name)
+    return item ? item.price : 0
   }
 
-  // 获取项目总价（显示为元）
-  const getItemTotalPrice = (index: number): string => {
-    const itemName = form.value.treatment[index]?.treatmentItem
-    const count = form.value.treatment[index]?.count || 0
+  // // 获取单价（显示为元）
+  // const getUnitPrice = (index: number): string => {
+  //   const itemName = form.value.treatment[index]?.treatmentItem
+  //   if (!itemName) return '-'
 
-    if (!itemName || !count) return '-'
+  //   const item = healingItems.value.find((item) => item.name === itemName)
+  //   if (!item) return '-'
 
-    const item = healingItems.value.find((item) => item.name === itemName)
-    if (!item) return '-'
+  //   // item.price 假设以万分为单位存储，转换为元显示
+  //   return formatAmountFromTenThousandths(item.price)
+  // }
 
-    // item.price 以万分为单位，计算总价（万分）
-    const totalPriceInTenThousandths = item.price * count
-    // 转换为元显示
-    return formatAmountFromTenThousandths(totalPriceInTenThousandths)
-  }
+  // // 获取项目总价（显示为元）
+  // const getItemTotalPrice = (index: number): string => {
+  //   const itemName = form.value.treatment[index]?.treatmentItem
+  //   const count = form.value.treatment[index]?.count || 0
+
+  //   if (!itemName || !count) return '-'
+
+  //   const item = healingItems.value.find((item) => item.name === itemName)
+  //   if (!item) return '-'
+
+  //   // item.price 以万分为单位，计算总价（万分）
+  //   const totalPriceInTenThousandths = item.price * count
+  //   // 转换为元显示
+  //   return formatAmountFromTenThousandths(totalPriceInTenThousandths)
+  // }
 
   // 计算总金额（显示为元）
-  const totalAmount = computed(() => {
+  const totalAmountTenThousandths = computed(() => {
     let totalTenThousandths = 0
 
     form.value.treatment.forEach((treatmentItem) => {
-      if (treatmentItem.treatmentItem && treatmentItem.count) {
-        const item = healingItems.value.find((item) => item.name === treatmentItem.treatmentItem)
-        if (item) {
-          // item.price 以万分为单位，乘以数量得到总价（万分）
-          totalTenThousandths += item.price * treatmentItem.count
-        }
-      }
+      totalTenThousandths +=
+        getUnitPriceTenThousandths(treatmentItem.treatmentItem) * (treatmentItem.count || 0)
     })
 
     // 转换为元显示
-    return convertTenThousandthsToYuan(totalTenThousandths).toFixed(4)
+    return totalTenThousandths
   })
 
   // 处理治疗项目变更
@@ -533,6 +536,7 @@
         trade_type: form.value.tradeType,
         diagnosis: form.value.diagnosis,
         note: form.value.note,
+        total_amount: totalAmountTenThousandths.value,
         treatment_items: form.value.treatment.map((item) => {
           const healingItem = healingItems.value.find((h) => h.name === item.treatmentItem)
           return {

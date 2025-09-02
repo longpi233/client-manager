@@ -802,7 +802,8 @@
                 justify-content: center !important;
                 width: 100% !important;
                 height: 32px;
-                margin-left: 2px !important;
+                padding: 0 8px !important;
+                margin: 0 !important;
                 font-size: 13px;
                 text-align: center !important;
 
@@ -812,9 +813,13 @@
                   align-items: center !important;
                   justify-content: center !important;
                   width: 100%;
+                  overflow: hidden;
+                  text-overflow: ellipsis;
+                  white-space: nowrap;
                 }
 
                 :deep(.el-icon) {
+                  flex-shrink: 0;
                   margin-right: 0 !important;
                   margin-left: 0 !important;
                 }
@@ -823,6 +828,9 @@
                   display: flex;
                   align-items: center;
                   justify-content: center;
+                  overflow: hidden;
+                  text-overflow: ellipsis;
+                  white-space: nowrap;
                 }
 
                 &:hover {
@@ -851,6 +859,7 @@
 
     .table-stat-item {
       padding: 16px;
+      margin-top: 10px;
       text-align: center;
       background: var(--el-fill-color-lighter);
       border-radius: 8px;

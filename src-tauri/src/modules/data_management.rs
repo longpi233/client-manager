@@ -1,11 +1,11 @@
+use crate::modules::database;
+use chrono::{DateTime, Local, Utc};
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
-use chrono::{DateTime, Utc};
 use uuid::Uuid;
-use std::collections::HashMap;
-use crate::modules::database;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DatabaseBackup {
@@ -49,8 +49,7 @@ pub struct DataManagement;
 impl DataManagement {
     /// 获取数据库文件路径
     fn get_database_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
-        database::get_database_path()
-            .ok_or_else(|| "数据库尚未初始化".into())
+        database::get_database_path().ok_or_else(|| "数据库尚未初始化".into())
     }
 
     /// 获取备份目录路径
@@ -59,11 +58,11 @@ impl DataManagement {
             .ok_or("无法获取应用数据目录")?
             .join("健康诊所管理系统")
             .join("backups");
-        
+
         if !backup_dir.exists() {
             fs::create_dir_all(&backup_dir)?;
         }
-        
+
         Ok(backup_dir)
     }
 
@@ -76,15 +75,14 @@ impl DataManagement {
             for entry in fs::read_dir(backup_dir)? {
                 let entry = entry?;
                 let path = entry.path();
-                
+
                 if path.extension().and_then(|s| s.to_str()) == Some("db") {
                     if let Some(filename) = path.file_name().and_then(|s| s.to_str()) {
                         let metadata = fs::metadata(&path)?;
-                        let created_at = metadata.created()
-                            .or_else(|_| metadata.modified())?;
-                        
+                        let created_at = metadata.created().or_else(|_| metadata.modified())?;
+
                         let created_datetime: DateTime<Utc> = created_at.into();
-                        
+
                         // 从文件名中提取信息
                         let parts: Vec<&str> = filename.splitn(3, '_').collect();
                         let (id, timestamp, description) = if parts.len() >= 2 {
@@ -95,13 +93,13 @@ impl DataManagement {
                                     Some(parts[2].replace(".db", "").replace("-", " "))
                                 } else {
                                     None
-                                }
+                                },
                             )
                         } else {
                             (
                                 Uuid::new_v4().to_string(),
                                 created_datetime.format("%Y%m%d_%H%M%S").to_string(),
-                                None
+                                None,
                             )
                         };
 
@@ -124,32 +122,34 @@ impl DataManagement {
     }
 
     /// 创建数据库备份
-    pub fn create_backup(description: Option<String>) -> Result<DatabaseBackup, Box<dyn std::error::Error>> {
+    pub fn create_backup(
+        description: Option<String>,
+    ) -> Result<DatabaseBackup, Box<dyn std::error::Error>> {
         let db_path = Self::get_database_path()?;
         let backup_dir = Self::get_backup_directory()?;
-        
+
         if !db_path.exists() {
             return Err("数据库文件不存在".into());
         }
 
-        let now = Utc::now();
+        let now = Local::now();
         let timestamp = now.format("%Y%m%d_%H%M%S").to_string();
         let backup_id = Uuid::new_v4().to_string()[..8].to_string();
-        
+
         let backup_filename = if let Some(desc) = &description {
             let clean_desc = desc.replace(" ", "-").replace("/", "-").replace("\\", "-");
             format!("{}_{}_backup_{}.db", backup_id, timestamp, clean_desc)
         } else {
             format!("{}_{}_backup.db", backup_id, timestamp)
         };
-        
+
         let backup_path = backup_dir.join(&backup_filename);
-        
+
         // 复制数据库文件
         fs::copy(&db_path, &backup_path)?;
-        
+
         let metadata = fs::metadata(&backup_path)?;
-        
+
         Ok(DatabaseBackup {
             id: backup_id,
             filename: backup_filename,
@@ -164,27 +164,31 @@ impl DataManagement {
     pub fn restore_backup(backup_id: &str) -> Result<bool, Box<dyn std::error::Error>> {
         let db_path = Self::get_database_path()?;
         let backup_dir = Self::get_backup_directory()?;
-        
+
         // 查找对应的备份文件
         let backups = Self::get_backup_list()?;
-        let backup = backups.iter()
+        let backup = backups
+            .iter()
             .find(|b| b.id == backup_id)
             .ok_or("备份文件不存在")?;
-        
+
         let backup_path = backup_dir.join(&backup.filename);
-        
+
         if !backup_path.exists() {
             return Err("备份文件不存在".into());
         }
-        
+
         // 创建当前数据库的临时备份
-        let temp_backup = format!("temp_before_restore_{}.db", Utc::now().format("%Y%m%d_%H%M%S"));
+        let temp_backup = format!(
+            "temp_before_restore_{}.db",
+            Local::now().format("%Y%m%d_%H%M%S")
+        );
         let temp_backup_path = backup_dir.join(temp_backup);
-        
+
         if db_path.exists() {
             fs::copy(&db_path, &temp_backup_path)?;
         }
-        
+
         // 恢复备份
         match fs::copy(&backup_path, &db_path) {
             Ok(_) => {
@@ -208,15 +212,16 @@ impl DataManagement {
     /// 删除数据库备份
     pub fn delete_backup(backup_id: &str) -> Result<bool, Box<dyn std::error::Error>> {
         let backup_dir = Self::get_backup_directory()?;
-        
+
         // 查找对应的备份文件
         let backups = Self::get_backup_list()?;
-        let backup = backups.iter()
+        let backup = backups
+            .iter()
             .find(|b| b.id == backup_id)
             .ok_or("备份文件不存在")?;
-        
+
         let backup_path = backup_dir.join(&backup.filename);
-        
+
         if backup_path.exists() {
             fs::remove_file(backup_path)?;
             Ok(true)
@@ -228,7 +233,7 @@ impl DataManagement {
     /// 获取数据库状态信息
     pub fn get_database_status() -> Result<DatabaseStatus, Box<dyn std::error::Error>> {
         let db_path = Self::get_database_path()?;
-        
+
         let size = if db_path.exists() {
             fs::metadata(&db_path)?.len()
         } else {
@@ -245,17 +250,15 @@ impl DataManagement {
 
         if db_path.exists() {
             let conn = Connection::open(&db_path)?;
-            
+
             // 获取所有表的信息
             let table_names = vec![
-                "medical_records",
-                "treatment_items", 
-                "prescription_items",
-                "customers",
-                "chinese_medicines",
-                "chinese_medicine_prescriptions",
+                "institutions",
                 "healing_items",
-                "institutions"
+                "chinese_medicines",
+                "medical_records",
+                "medical_treatment_items",
+                "medical_prescription_items",
             ];
 
             for table_name in table_names {
@@ -288,21 +291,21 @@ impl DataManagement {
     /// 压缩数据库
     pub fn compact_database() -> Result<CompactResult, Box<dyn std::error::Error>> {
         let db_path = Self::get_database_path()?;
-        
+
         if !db_path.exists() {
             return Err("数据库文件不存在".into());
         }
 
         let original_size = fs::metadata(&db_path)?.len();
-        
+
         // 连接数据库并执行VACUUM
         let conn = Connection::open(&db_path)?;
         conn.execute("VACUUM", [])?;
         conn.close().map_err(|(_, e)| e)?;
-        
+
         let new_size = fs::metadata(&db_path)?.len();
         let saved_space = original_size.saturating_sub(new_size);
-        
+
         Ok(CompactResult {
             original_size,
             new_size,
@@ -313,7 +316,7 @@ impl DataManagement {
     /// 导出数据为JSON格式
     pub fn export_data_as_json(tables: Vec<String>) -> Result<String, Box<dyn std::error::Error>> {
         let db_path = Self::get_database_path()?;
-        
+
         if !db_path.exists() {
             return Err("数据库文件不存在".into());
         }
@@ -323,8 +326,9 @@ impl DataManagement {
 
         for table_name in tables {
             let mut stmt = conn.prepare(&format!("SELECT * FROM {}", table_name))?;
-            let column_names: Vec<String> = stmt.column_names().iter().map(|s| s.to_string()).collect();
-            
+            let column_names: Vec<String> =
+                stmt.column_names().iter().map(|s| s.to_string()).collect();
+
             let rows = stmt.query_map([], |row| {
                 let mut record = HashMap::new();
                 for (i, column_name) in column_names.iter().enumerate() {
@@ -338,7 +342,7 @@ impl DataManagement {
             for row in rows {
                 table_data.push(row?);
             }
-            
+
             export_data.insert(table_name, table_data);
         }
 
@@ -347,14 +351,16 @@ impl DataManagement {
     }
 
     /// 从JSON导入数据
-    pub fn import_data_from_json(json_data: &str) -> Result<ImportResult, Box<dyn std::error::Error>> {
+    pub fn import_data_from_json(
+        json_data: &str,
+    ) -> Result<ImportResult, Box<dyn std::error::Error>> {
         let db_path = Self::get_database_path()?;
-        
+
         if !db_path.exists() {
             return Err("数据库文件不存在".into());
         }
 
-        let import_data: HashMap<String, Vec<HashMap<String, String>>> = 
+        let import_data: HashMap<String, Vec<HashMap<String, String>>> =
             serde_json::from_str(json_data)?;
 
         let conn = Connection::open(&db_path)?;
@@ -371,7 +377,7 @@ impl DataManagement {
 
                 let columns: Vec<String> = record.keys().cloned().collect();
                 let placeholders: Vec<String> = columns.iter().map(|_| "?".to_string()).collect();
-                
+
                 let sql = format!(
                     "INSERT OR REPLACE INTO {} ({}) VALUES ({})",
                     table_name,
@@ -379,7 +385,8 @@ impl DataManagement {
                     placeholders.join(", ")
                 );
 
-                let values: Vec<String> = columns.iter()
+                let values: Vec<String> = columns
+                    .iter()
                     .map(|col| record.get(col).cloned().unwrap_or_default())
                     .collect();
 
@@ -401,7 +408,7 @@ impl DataManagement {
     /// 在系统文件管理器中打开数据库文件
     pub fn open_database_file() -> Result<bool, Box<dyn std::error::Error>> {
         let db_path = Self::get_database_path()?;
-        
+
         if !db_path.exists() {
             return Err("数据库文件不存在".into());
         }
@@ -412,15 +419,16 @@ impl DataManagement {
     /// 在系统文件管理器中打开备份文件
     pub fn open_backup_file(backup_id: &str) -> Result<bool, Box<dyn std::error::Error>> {
         let backup_dir = Self::get_backup_directory()?;
-        
+
         // 查找对应的备份文件
         let backups = Self::get_backup_list()?;
-        let backup = backups.iter()
+        let backup = backups
+            .iter()
             .find(|b| b.id == backup_id)
             .ok_or("备份文件不存在")?;
-        
+
         let backup_path = backup_dir.join(&backup.filename);
-        
+
         if !backup_path.exists() {
             return Err("备份文件不存在".into());
         }
@@ -443,13 +451,14 @@ impl DataManagement {
     /// 获取备份文件完整路径
     pub fn get_backup_file_path(backup_id: &str) -> Result<String, Box<dyn std::error::Error>> {
         let backup_dir = Self::get_backup_directory()?;
-        
+
         // 查找对应的备份文件
         let backups = Self::get_backup_list()?;
-        let backup = backups.iter()
+        let backup = backups
+            .iter()
             .find(|b| b.id == backup_id)
             .ok_or("备份文件不存在")?;
-        
+
         let backup_path = backup_dir.join(&backup.filename);
         Ok(backup_path.to_string_lossy().to_string())
     }
@@ -473,13 +482,9 @@ impl DataManagement {
         #[cfg(target_os = "linux")]
         {
             if let Some(parent) = path.parent() {
-                std::process::Command::new("xdg-open")
-                    .arg(parent)
-                    .spawn()?;
+                std::process::Command::new("xdg-open").arg(parent).spawn()?;
             } else {
-                std::process::Command::new("xdg-open")
-                    .arg(path)
-                    .spawn()?;
+                std::process::Command::new("xdg-open").arg(path).spawn()?;
             }
         }
 
@@ -490,78 +495,65 @@ impl DataManagement {
 // Tauri 命令函数
 #[tauri::command]
 pub fn get_database_backups() -> Result<Vec<DatabaseBackup>, String> {
-    DataManagement::get_backup_list()
-        .map_err(|e| e.to_string())
+    DataManagement::get_backup_list().map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn create_database_backup(description: Option<String>) -> Result<DatabaseBackup, String> {
-    DataManagement::create_backup(description)
-        .map_err(|e| e.to_string())
+    DataManagement::create_backup(description).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn restore_database_backup(backup_id: String) -> Result<bool, String> {
-    DataManagement::restore_backup(&backup_id)
-        .map_err(|e| e.to_string())
+    DataManagement::restore_backup(&backup_id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn delete_database_backup(backup_id: String) -> Result<bool, String> {
-    DataManagement::delete_backup(&backup_id)
-        .map_err(|e| e.to_string())
+    DataManagement::delete_backup(&backup_id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn get_database_status() -> Result<DatabaseStatus, String> {
-    DataManagement::get_database_status()
-        .map_err(|e| e.to_string())
+    DataManagement::get_database_status().map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn compact_database() -> Result<CompactResult, String> {
-    DataManagement::compact_database()
-        .map_err(|e| e.to_string())
+    DataManagement::compact_database().map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn export_data_as_json(tables: Vec<String>) -> Result<String, String> {
-    DataManagement::export_data_as_json(tables)
-        .map_err(|e| e.to_string())
+    DataManagement::export_data_as_json(tables).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn import_data_from_json(json_data: String) -> Result<ImportResult, String> {
-    DataManagement::import_data_from_json(&json_data)
-        .map_err(|e| e.to_string())
+    DataManagement::import_data_from_json(&json_data).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn open_database_file() -> Result<bool, String> {
-    DataManagement::open_database_file()
-        .map_err(|e| e.to_string())
+    DataManagement::open_database_file().map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn open_backup_file(backup_id: String) -> Result<bool, String> {
-    DataManagement::open_backup_file(&backup_id)
-        .map_err(|e| e.to_string())
+    DataManagement::open_backup_file(&backup_id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn open_backup_directory() -> Result<bool, String> {
-    DataManagement::open_backup_directory()
-        .map_err(|e| e.to_string())
+    DataManagement::open_backup_directory().map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn get_database_file_path() -> Result<String, String> {
-    DataManagement::get_database_file_path()
-        .map_err(|e| e.to_string())
+    DataManagement::get_database_file_path().map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn get_backup_file_path(backup_id: String) -> Result<String, String> {
-    DataManagement::get_backup_file_path(&backup_id)
-        .map_err(|e| e.to_string())
+    DataManagement::get_backup_file_path(&backup_id).map_err(|e| e.to_string())
 }

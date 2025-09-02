@@ -97,12 +97,12 @@
     formatAmountFromTenThousandths,
     getTradeTypeName
   } from '@/utils/dataprocess/medicalFormatter'
-  import type { OutpatientLogItem } from '@/api/outpatientLogApi'
+  import type { UnifiedMedicalRecord } from '@/types/medical'
 
   defineOptions({ name: 'MedicalDetail' })
 
   interface Props {
-    data: OutpatientLogItem
+    data: UnifiedMedicalRecord
   }
 
   defineProps<Props>()

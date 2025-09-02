@@ -27,16 +27,16 @@ export const getChineseMedicineList = async (
 
 /**
  * 创建中药项目
- * @param data 中药数据
+ * @param item 中药数据
  * @returns 创建结果
  */
 export const createChineseMedicineItem = async (
-  data: Api.ChineseMedicine.CreateParams
+  item: Api.ChineseMedicine.Item
 ): Promise<Api.Http.BaseResponse<Api.ChineseMedicine.Item>> => {
   try {
     const response = await invoke<Api.Http.BaseResponse<Api.ChineseMedicine.Item>>(
       'create_chinese_medicine_item',
-      { item: data }
+      { item }
     )
     return response
   } catch (error) {
@@ -47,16 +47,16 @@ export const createChineseMedicineItem = async (
 
 /**
  * 更新中药项目
- * @param data 中药数据
+ * @param item 中药数据
  * @returns 更新结果
  */
 export const updateChineseMedicineItem = async (
-  data: Api.ChineseMedicine.UpdateParams
+  item: Api.ChineseMedicine.Item
 ): Promise<Api.Http.BaseResponse<Api.ChineseMedicine.Item>> => {
   try {
     const response = await invoke<Api.Http.BaseResponse<Api.ChineseMedicine.Item>>(
       'update_chinese_medicine_item',
-      { item: data }
+      { item }
     )
     return response
   } catch (error) {

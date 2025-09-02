@@ -2,7 +2,16 @@
  * 医疗系统专用格式化工具函数
  */
 
-import { RecordType } from '@/api/unifiedMedicalRecordApi'
+import {
+  RecordType,
+  GENDER_LABEL_MAP,
+  TRADE_TYPE_LABEL_MAP,
+  RECORD_TYPE_LABEL_MAP,
+  GENDER_TAG_TYPE_MAP,
+  TRADE_TYPE_TAG_TYPE_MAP,
+  RECORD_TYPE_TAG_TYPE_MAP,
+  type TagType
+} from '@/types/medical'
 import {
   formatDateTime as baseFormatDateTime,
   formatGender as baseFormatGender,
@@ -11,16 +20,6 @@ import {
   convertYuanToTenThousandths,
   convertTenThousandthsToYuan
 } from './format'
-import {
-  GenderMap,
-  TradeTypeMap,
-  DataTypeMap,
-  QueryTypeMap,
-  GenderTagTypeMap,
-  TradeTypeTagTypeMap,
-  DataTypeTagTypeMap,
-  type TagTypeEnum
-} from '@/enums/medicalEnum'
 
 // 重新导出基础格式化函数
 export {
@@ -40,7 +39,7 @@ export {
 export function getGenderName(gender: string | number): string {
   if (!gender && gender !== 0) return '-'
   const genderStr = String(gender)
-  return GenderMap[genderStr as keyof typeof GenderMap] || genderStr
+  return GENDER_LABEL_MAP[genderStr as keyof typeof GENDER_LABEL_MAP] || genderStr
 }
 
 /**
@@ -83,7 +82,11 @@ export function getTradeTypeName(type: string): string {
     '3': '武汉医保'
   }
 
-  return standardMap[normalizedType] || TradeTypeMap[type as keyof typeof TradeTypeMap] || type
+  return (
+    standardMap[normalizedType] ||
+    TRADE_TYPE_LABEL_MAP[type as keyof typeof TRADE_TYPE_LABEL_MAP] ||
+    type
+  )
 }
 
 /**
@@ -93,7 +96,7 @@ export function getTradeTypeName(type: string): string {
  */
 export function getDataTypeName(type: RecordType): string {
   if (!type) return '-'
-  return DataTypeMap[type] || type
+  return RECORD_TYPE_LABEL_MAP[type] || type
 }
 
 /**
@@ -103,7 +106,14 @@ export function getDataTypeName(type: RecordType): string {
  */
 export function getQueryTypeName(type: string): string {
   if (!type) return '-'
-  return QueryTypeMap[type as keyof typeof QueryTypeMap] || type
+
+  const queryTypeMap: Record<string, string> = {
+    month: '按月份查询',
+    year: '按年份查询',
+    custom: '自定义日期'
+  }
+
+  return queryTypeMap[type] || type
 }
 
 /**
@@ -111,8 +121,8 @@ export function getQueryTypeName(type: string): string {
  * @param gender 性别值
  * @returns Element Plus 标签类型
  */
-export function getGenderTagType(gender: string): TagTypeEnum {
-  return GenderTagTypeMap[gender as keyof typeof GenderTagTypeMap] || 'info'
+export function getGenderTagType(gender: string): TagType {
+  return GENDER_TAG_TYPE_MAP[gender as keyof typeof GENDER_TAG_TYPE_MAP] || 'info'
 }
 
 /**
@@ -120,8 +130,8 @@ export function getGenderTagType(gender: string): TagTypeEnum {
  * @param type 结算类型值
  * @returns Element Plus 标签类型
  */
-export function getTradeTypeTagType(type: string): TagTypeEnum {
-  return TradeTypeTagTypeMap[type as keyof typeof TradeTypeTagTypeMap] || 'info'
+export function getTradeTypeTagType(type: string): TagType {
+  return TRADE_TYPE_TAG_TYPE_MAP[type as keyof typeof TRADE_TYPE_TAG_TYPE_MAP] || 'info'
 }
 
 /**
@@ -129,8 +139,8 @@ export function getTradeTypeTagType(type: string): TagTypeEnum {
  * @param type 数据类型值
  * @returns Element Plus 标签类型
  */
-export function getDataTypeTagType(type: string): TagTypeEnum {
-  return DataTypeTagTypeMap[type as keyof typeof DataTypeTagTypeMap] || 'info'
+export function getDataTypeTagType(type: string): TagType {
+  return RECORD_TYPE_TAG_TYPE_MAP[type as keyof typeof RECORD_TYPE_TAG_TYPE_MAP] || 'info'
 }
 
 /**
