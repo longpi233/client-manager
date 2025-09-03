@@ -1,32 +1,5 @@
 use serde::{Deserialize, Serialize};
 
-// 记录类型枚举
-// #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
-// pub enum RecordType {
-//     Customer,     // 散客登记
-//     Medical,      // 门诊病历
-//     Prescription, // 中药处方
-// }
-
-// impl RecordType {
-//     pub fn to_string(&self) -> String {
-//         match self {
-//             RecordType::Customer => "customer".to_string(),
-//             RecordType::Medical => "medical".to_string(),
-//             RecordType::Prescription => "prescription".to_string(),
-//         }
-//     }
-
-//     pub fn from_string(s: &str) -> Option<Self> {
-//         match s {
-//             "customer" => Some(RecordType::Customer),
-//             "medical" => Some(RecordType::Medical),
-//             "prescription" => Some(RecordType::Prescription),
-//             _ => None,
-//         }
-//     }
-// }
-
 // 统一的医疗记录结构体
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MedicalRecord {
@@ -39,13 +12,12 @@ pub struct MedicalRecord {
     pub time_of_visit: String,
     pub trade_type: String,
     pub diagnosis: String,
-    pub note: Option<String>,    
+    pub note: Option<String>,
     pub total_amount: i64, // 总金额（以分为单位）
     pub doctor_id: Option<i64>,
     pub doctor_name: Option<String>,
     pub created_at: Option<String>,
     pub updated_at: Option<String>,
-
 
     // 门诊病历特有字段
     pub chief_complaint: Option<String>,

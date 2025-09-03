@@ -183,7 +183,9 @@
                   </ElCol>
                   <ElCol :span="4">
                     <div class="price-display">{{
-                      formatAmountFromTenThousandths(totalAmountTenThousandths)
+                      formatAmountFromTenThousandths(
+                        getUnitPriceTenThousandths(item.treatmentItem) * (item.count || 0)
+                      )
                     }}</div>
                   </ElCol>
                   <ElCol :span="4">
@@ -385,34 +387,6 @@
     const item = healingItems.value.find((item) => item.name === name)
     return item ? item.price : 0
   }
-
-  // // 获取单价（显示为元）
-  // const getUnitPrice = (index: number): string => {
-  //   const itemName = form.value.treatment[index]?.treatmentItem
-  //   if (!itemName) return '-'
-
-  //   const item = healingItems.value.find((item) => item.name === itemName)
-  //   if (!item) return '-'
-
-  //   // item.price 假设以万分为单位存储，转换为元显示
-  //   return formatAmountFromTenThousandths(item.price)
-  // }
-
-  // // 获取项目总价（显示为元）
-  // const getItemTotalPrice = (index: number): string => {
-  //   const itemName = form.value.treatment[index]?.treatmentItem
-  //   const count = form.value.treatment[index]?.count || 0
-
-  //   if (!itemName || !count) return '-'
-
-  //   const item = healingItems.value.find((item) => item.name === itemName)
-  //   if (!item) return '-'
-
-  //   // item.price 以万分为单位，计算总价（万分）
-  //   const totalPriceInTenThousandths = item.price * count
-  //   // 转换为元显示
-  //   return formatAmountFromTenThousandths(totalPriceInTenThousandths)
-  // }
 
   // 计算总金额（显示为元）
   const totalAmountTenThousandths = computed(() => {

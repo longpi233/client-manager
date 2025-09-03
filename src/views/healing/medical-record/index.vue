@@ -304,9 +304,9 @@
           <ElCol :span="24">
             <div class="total-amount">
               <span class="total-label">总金额：</span>
-              <span class="total-value"
-                >¥{{ convertTenThousandthsToYuan(totalAmountTenThousandths) }}</span
-              >
+              <span class="total-value">{{
+                formatAmountFromTenThousandths(totalAmountTenThousandths)
+              }}</span>
             </div>
           </ElCol>
         </ElRow>
@@ -370,10 +370,7 @@
     type MedicalRecordData,
     type FeeListData
   } from '@/utils/print'
-  import {
-    formatAmountFromTenThousandths,
-    convertTenThousandthsToYuan
-  } from '@/utils/dataprocess/format'
+  import { formatAmountFromTenThousandths } from '@/utils/dataprocess/format'
 
   // 移除缺失的依赖项调用
   // const { initColors } = useTheme()
