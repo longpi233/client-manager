@@ -256,7 +256,9 @@
                   </ElCol>
                   <ElCol :span="4">
                     <div class="price-display">{{
-                      formatAmountFromTenThousandths(totalAmountTenThousandths)
+                      formatAmountFromTenThousandths(
+                        getUnitPriceTenThousandths(item.treatmentItem) * item.count
+                      )
                     }}</div>
                   </ElCol>
                   <ElCol :span="4">
