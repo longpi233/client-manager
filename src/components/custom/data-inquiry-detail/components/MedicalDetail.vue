@@ -18,10 +18,10 @@
     <ElDescriptions title="诊疗信息" :column="1" border>
       <ElDescriptionsItem label="主诉">{{ data.chief_complaint }}</ElDescriptionsItem>
       <ElDescriptionsItem label="现病史">{{ data.illness_history || '-' }}</ElDescriptionsItem>
+      <ElDescriptionsItem label="既往史">{{ data.past_history || '-' }}</ElDescriptionsItem>
       <ElDescriptionsItem label="体格检查">{{
         data.physical_examination || '-'
       }}</ElDescriptionsItem>
-      <ElDescriptionsItem label="既往史">{{ data.past_history || '-' }}</ElDescriptionsItem>
       <ElDescriptionsItem label="实验室检查">{{
         data.laboratory_examination || '-'
       }}</ElDescriptionsItem>

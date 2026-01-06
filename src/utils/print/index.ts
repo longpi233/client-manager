@@ -9,6 +9,7 @@ export type {
   MedicalRecordData,
   PrescriptionData,
   FeeListData,
+  TreatmentPrescriptionData,
   PrintOptions
 } from './printUtils'
 
@@ -17,6 +18,7 @@ export {
   formatGender,
   formatTradeType,
   formatDateTime,
+  formatDateChinese,
   formatAmount,
   getInstitutionInfo,
   printDocument
@@ -30,6 +32,12 @@ export { generateFeeListHTML, printFeeList } from './feeListPrint'
 
 // 导出中药处方打印
 export { generatePrescriptionHTML, printPrescription } from './prescriptionPrint'
+
+// 导出治疗处方单打印
+export {
+  generateTreatmentPrescriptionHTML,
+  printTreatmentPrescription
+} from './treatmentPrescriptionPrint'
 
 /**
  * 统一打印函数

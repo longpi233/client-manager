@@ -120,11 +120,11 @@
 
         <ElRow :gutter="20">
           <ElCol :span="24">
-            <ElFormItem label="体格检查" prop="physicalExamination">
+            <ElFormItem label="既往史" prop="pastHistory">
               <ElInput
                 type="textarea"
-                placeholder="请输入体格检查"
-                v-model="form.physicalExamination"
+                placeholder="请输入既往史"
+                v-model="form.pastHistory"
                 show-word-limit
                 maxlength="200"
                 :rows="3"
@@ -135,11 +135,11 @@
 
         <ElRow :gutter="20">
           <ElCol :span="24">
-            <ElFormItem label="既往史" prop="pastHistory">
+            <ElFormItem label="体格检查" prop="physicalExamination">
               <ElInput
                 type="textarea"
-                placeholder="请输入既往史"
-                v-model="form.pastHistory"
+                placeholder="请输入体格检查"
+                v-model="form.physicalExamination"
                 show-word-limit
                 maxlength="200"
                 :rows="3"
@@ -333,8 +333,11 @@
               <ElButton type="primary" @click="submitRegistration" :loading="loading">
                 提交登记
               </ElButton>
-              <ElButton type="success" @click="printRecord" plain> 生成门诊病历 </ElButton>
-              <ElButton type="warning" @click="printFeeList" plain> 生成费用清单 </ElButton>
+              <ElButton type="success" @click="printRecord" plain>生成门诊病历</ElButton>
+              <ElButton type="warning" @click="printFeeList" plain>生成费用清单</ElButton>
+              <ElButton type="info" @click="printTreatmentPrescription" plain>
+                生成治疗处方单
+              </ElButton>
             </div>
           </ElCol>
         </ElRow>
@@ -369,8 +372,10 @@
   import {
     printMedicalRecord as printMedicalRecordTemplate,
     printFeeList as printFeeListTemplate,
+    printTreatmentPrescription as printTreatmentPrescriptionTemplate,
     type MedicalRecordData,
-    type FeeListData
+    type FeeListData,
+    type TreatmentPrescriptionData
   } from '@/utils/print'
   import { formatAmountFromTenThousandths } from '@/utils/dataprocess/format'
 
@@ -397,7 +402,7 @@
     pastHistory: '',
     laboratoryExamination: '',
     diagnosis: '',
-    treatmentMethod: '',
+    treatmentMethod: '温经活血，通络止痛。',
     note: '',
     treatment: [{ treatmentItem: '', count: 1 }] as TreatmentFormItem[],
     doctorId: ''
@@ -416,6 +421,7 @@
     tradeType: [{ required: true, message: '请选择结算类型', trigger: 'change' }],
     chiefComplaint: [{ required: true, message: '请输入主诉', trigger: 'blur' }],
     diagnosis: [{ required: true, message: '请输入诊断信息', trigger: 'blur' }],
+    treatmentMethod: [{ required: true, message: '请输入治法治则', trigger: 'blur' }],
     doctorId: [{ required: true, message: '请选择医师', trigger: 'change' }]
   }
 
@@ -747,6 +753,50 @@
         })
     } catch (error) {
       console.error('打印费用清单失败:', error)
+      ElMessage.error('请先完善必填信息')
+    }
+  }
+
+  // 生成治疗处方单（打印功能）
+  const printTreatmentPrescription = async () => {
+    try {
+      await formRef.value?.validate()
+
+      // 构建治疗处方单打印数据
+      const printData: TreatmentPrescriptionData = {
+        customer_name: form.customerName,
+        gender: form.gender,
+        age: form.age || 0,
+        trade_type: form.tradeType,
+        diagnosis: form.diagnosis,
+        treatment_method: form.treatmentMethod,
+        note: form.note,
+        time_of_visit:
+          typeof form.timeOfVisit === 'string'
+            ? form.timeOfVisit
+            : form.timeOfVisit.toISOString().slice(0, 19).replace('T', ' '),
+        treatment_items: form.treatment.map((item) => ({
+          treatment_item: item.treatmentItem,
+          count: item.count
+        }))
+      }
+
+      printTreatmentPrescriptionTemplate(printData)
+      ElMessage.success('治疗处方单打印成功')
+
+      ElMessageBox.confirm('是否确认提交门诊病历登记？', '提交登记', {
+        confirmButtonText: '确认',
+        cancelButtonText: '取消',
+        type: 'warning'
+      })
+        .then(() => {
+          submitRegistration()
+        })
+        .catch(() => {
+          // 用户取消提交
+        })
+    } catch (error) {
+      console.error('打印治疗处方单失败:', error)
       ElMessage.error('请先完善必填信息')
     }
   }

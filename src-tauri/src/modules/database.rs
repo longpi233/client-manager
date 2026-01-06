@@ -22,7 +22,7 @@ impl DatabaseManager {
         })
     }
 
-    pub fn get_connection(&self) -> std::sync::MutexGuard<Connection> {
+    pub fn get_connection(&self) -> std::sync::MutexGuard<'_, Connection> {
         self.connection.lock().unwrap()
     }
 

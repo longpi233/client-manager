@@ -25,10 +25,11 @@
       <template v-if="queryType === 'customer'">
         <ElButton type="info" disabled>散客登记暂不支持打印</ElButton>
       </template>
-      <!-- 门诊病历：支持打印病历和费用清单 -->
+      <!-- 门诊病历：支持打印病历、费用清单和治疗处方单 -->
       <template v-if="queryType === 'medical'">
         <ElButton type="success" @click="handlePrintMedicalRecord">打印门诊病历</ElButton>
         <ElButton type="warning" @click="handlePrintMedicalFeeList">打印费用清单</ElButton>
+        <ElButton type="primary" @click="handlePrintTreatmentPrescription">打印治疗处方单</ElButton>
       </template>
       <!-- 中药处方：支持打印处方和费用清单 -->
       <template v-if="queryType === 'prescription'">
@@ -40,7 +41,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, watch } from 'vue'
+  import { ref, watch, computed } from 'vue'
   import { ElMessage } from 'element-plus'
   import CustomerDetail from './components/CustomerDetail.vue'
   import MedicalDetail from './components/MedicalDetail.vue'
@@ -49,9 +50,11 @@
     printMedicalRecord,
     printFeeList,
     printPrescription,
+    printTreatmentPrescription,
     type MedicalRecordData,
     type FeeListData,
-    type PrescriptionData
+    type PrescriptionData,
+    type TreatmentPrescriptionData
   } from '@/utils/print'
   import type { UnifiedMedicalRecord } from '@/types/medical'
 
@@ -68,8 +71,6 @@
 
   const props = defineProps<Props>()
   const emit = defineEmits<Emits>()
-
-  import { computed } from 'vue'
 
   const queryType = computed(() => {
     return props.selectedItem ? props.selectedItem.data_type : null
@@ -171,6 +172,38 @@
       ElMessage.success('费用清单打印成功')
     } catch (error) {
       console.error('打印费用清单失败:', error)
+      ElMessage.error('打印失败，请重试')
+    }
+  }
+
+  // 打印治疗处方单
+  const handlePrintTreatmentPrescription = async () => {
+    if (!props.selectedItem) {
+      ElMessage.warning('请先选择要打印的记录')
+      return
+    }
+
+    try {
+      // 构建治疗处方单打印数据
+      const treatmentPrescriptionData: TreatmentPrescriptionData = {
+        customer_name: props.selectedItem.customer_name,
+        gender: props.selectedItem.gender,
+        age: props.selectedItem.age,
+        trade_type: props.selectedItem.trade_type,
+        diagnosis: props.selectedItem.diagnosis,
+        treatment_method: props.selectedItem.treatment_method,
+        treatment_items: (props.selectedItem.treatment_items || []).map((item: any) => ({
+          treatment_item: item.treatment_item || item.treatment_item_name,
+          count: item.count || item.treatment_count
+        })),
+        note: props.selectedItem.note,
+        time_of_visit: props.selectedItem.time_of_visit
+      }
+
+      await printTreatmentPrescription(treatmentPrescriptionData)
+      ElMessage.success('治疗处方单打印成功')
+    } catch (error) {
+      console.error('打印治疗处方单失败:', error)
       ElMessage.error('打印失败，请重试')
     }
   }

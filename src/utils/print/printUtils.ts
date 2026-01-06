@@ -1,6 +1,6 @@
 /**
  * 统一打印工具类
- * 支持门诊病历、费用清单、中药处方的打印功能
+ * 支持门诊病历、费用清单、中药处方、治疗处方单的打印功能
  */
 import type { UnifiedMedicalRecord, TreatmentItem, PrescriptionItem } from '@/types/medical'
 
@@ -38,6 +38,21 @@ export interface PrescriptionData extends PrintableItem {
 export interface FeeListData extends PrintableItem {
   treatment_items?: TreatmentItem[]
   total_amount?: number // 总金额（分）
+}
+
+export interface TreatmentPrescriptionData {
+  customer_name: string
+  gender: string
+  age: number
+  trade_type: string
+  diagnosis: string
+  treatment_method?: string // 治法治则
+  treatment_items?: Array<{
+    treatment_item: string
+    count: number
+  }>
+  note?: string
+  time_of_visit: string
 }
 
 // 新增：统一医疗记录的打印适配器
@@ -83,6 +98,17 @@ export const formatDateTime = (dateTime: string | Date): string => {
     // hour: '2-digit',
     // minute: '2-digit'
   })
+}
+
+/**
+ * 格式化日期为 xxxx年xx月xx日 格式
+ */
+export const formatDateChinese = (dateTime: string | Date): string => {
+  const date = typeof dateTime === 'string' ? new Date(dateTime) : dateTime
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}年${month}月${day}日`
 }
 
 /**
@@ -398,6 +424,39 @@ export const printDocument = (
           width: 25%;
           vertical-align: top;
         }
+        /* 治疗处方单样式 */
+        .signature-row {
+          display: flex;
+          gap: 40px;
+        }
+        .signature-item {
+          display: flex;
+          align-items: flex-start;
+          flex: 1;
+          min-width: 250px;
+        }
+        .signature-item .form-label {
+          min-width: 80px;
+          margin-right: 10px;
+          flex-shrink: 0;
+        }
+        .signature-space {
+          border-bottom: none;
+          padding: 2px 5px;
+          min-height: 50px;
+          flex: 1;
+          display: inline-block;
+          margin-right: 20px;
+        }
+        /* 空白区域样式 */
+        .blank-space-small {
+          height: 60px;
+          margin-bottom: 15px;
+        }
+        .blank-space-large {
+          height: 150px;
+          margin-top: 20px;
+        }
         @media print {
           body { margin: 0; }
           .no-print { display: none; }
@@ -524,33 +583,60 @@ export const printDocument = (
     </html>
   `
 
-  // 使用现代方法：创建 Blob URL
-  const blob = new Blob([printContent], { type: 'text/html' })
-  const url = URL.createObjectURL(blob)
+  // 使用 iframe 方法替代 window.open，避免被弹窗拦截
+  const iframe = document.createElement('iframe')
+  iframe.style.display = 'none'
+  document.body.appendChild(iframe)
 
-  // 计算窗口居中位置
-  const width = 800
-  const height = 600
-  const left = (screen.width - width) / 2
-  const top = (screen.height - height) / 2
+  try {
+    const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document
+    if (!iframeDoc) {
+      throw new Error('无法访问iframe的document对象')
+    }
 
-  const printWindow = window.open(
-    url,
-    '_blank',
-    `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
-  )
-  if (!printWindow) {
-    URL.revokeObjectURL(url)
-    throw new Error('无法打开打印窗口，请检查浏览器弹窗设置')
+    // 写入内容到 iframe
+    iframeDoc.open()
+    iframeDoc.write(printContent)
+    iframeDoc.close()
+
+    // 等待内容加载完成后打印
+    iframe.onload = () => {
+      try {
+        iframe.contentWindow?.print()
+      } catch (error) {
+        console.error('打印失败:', error)
+        throw new Error('打印窗口加载失败，请重试')
+      }
+    }
+
+    // 设置超时，如果加载太慢就直接尝试打印
+    const timeout = setTimeout(() => {
+      try {
+        iframe.contentWindow?.print()
+      } catch (error) {
+        console.error('打印超时:', error)
+      }
+    }, 2000)
+
+    // 页面加载完成后清除超时
+    iframe.addEventListener('load', () => {
+      clearTimeout(timeout)
+    })
+
+    // 打印完成或用户取消后删除 iframe
+    iframe.contentWindow?.addEventListener('afterprint', () => {
+      document.body.removeChild(iframe)
+    })
+
+    // 备用：延迟删除 iframe（如果 afterprint 事件未触发）
+    setTimeout(() => {
+      if (iframe.parentNode) {
+        document.body.removeChild(iframe)
+      }
+    }, 5000)
+  } catch (error) {
+    document.body.removeChild(iframe)
+    console.error('创建打印窗口失败:', error)
+    throw new Error('无法打开打印窗口，请检查浏览器设置')
   }
-
-  // 等待窗口加载完成后聚焦
-  printWindow.addEventListener('load', () => {
-    printWindow.focus()
-  })
-
-  // 窗口关闭时清理 URL
-  printWindow.addEventListener('beforeunload', () => {
-    URL.revokeObjectURL(url)
-  })
 }

@@ -70,13 +70,13 @@ export const generateMedicalRecordHTML = async (data: MedicalRecordData): Promis
       </div>
 
       <div class="form-row">
-        <span class="form-label">体格检查：</span>
-        <span class="form-value">${data.physical_examination || ''}</span>
+        <span class="form-label">既往史：</span>
+        <span class="form-value">${data.past_history || ''}</span>
       </div>
 
       <div class="form-row">
-        <span class="form-label">既往史：</span>
-        <span class="form-value">${data.past_history || ''}</span>
+        <span class="form-label">体格检查：</span>
+        <span class="form-value">${data.physical_examination || ''}</span>
       </div>
 
       <div class="form-row">
