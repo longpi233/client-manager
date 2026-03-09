@@ -153,10 +153,10 @@ pub async fn create_unified_medical_record(
                 }
             }
 
-            // 插入中药处方记录
+            // 插入中医中药记录
             if let Some(prescription_items) = params.prescription_items {
                 for (index, item) in prescription_items.iter().enumerate() {
-                    println!("插入中药处方项目 #{}: {:?}", index + 1, item);
+                    println!("插入中医中药项目 #{}: {:?}", index + 1, item);
                     
                     let insert_result = conn.execute(
                         "INSERT INTO medical_prescription_items (
@@ -175,11 +175,11 @@ pub async fn create_unified_medical_record(
                     
                     match insert_result {
                         Ok(rows_affected) => {
-                            println!("中药处方项目 #{} 插入成功，影响行数: {}", index + 1, rows_affected);
+                            println!("中医中药项目 #{} 插入成功，影响行数: {}", index + 1, rows_affected);
                         }
                         Err(e) => {
                             let error_msg = format!(
-                                "插入中药处方项目失败 - 项目名称: '{}', 剂量: {}, 单价: {}, 总价: {}, 错误: {}",
+                                "插入中医中药项目失败 - 项目名称: '{}', 剂量: {}, 单价: {}, 总价: {}, 错误: {}",
                                 item.medicine_name,
                                 item.grams,
                                 item.unit_price,
@@ -469,7 +469,7 @@ pub async fn get_unified_medical_record_list(
 
                     // 加载中药项目
                     if record.data_type == "prescription" {
-                        println!("正在为中药处方记录 ID: {} 加载处方项目", id);
+                        println!("正在为中医中药记录 ID: {} 加载处方项目", id);
                         match load_prescription_items(&conn, id) {
                             Ok(items) => {
                                 println!("成功加载到 {} 个处方项目", items.len());
@@ -534,7 +534,7 @@ fn load_prescription_items(
     conn: &rusqlite::Connection,
     medical_record_id: i64,
 ) -> Result<Vec<PrescriptionItemRecord>, rusqlite::Error> {
-    println!("查询中药处方项目，医疗记录ID: {}", medical_record_id);
+    println!("查询中医中药项目，医疗记录ID: {}", medical_record_id);
 
     let mut stmt = conn.prepare(
         "SELECT id, medical_record_id, medicine_name, grams, unit_price, total_price, created_at 
@@ -613,7 +613,7 @@ pub async fn get_unified_medical_record_detail(
             }
 
             if record.data_type == "prescription" {
-                println!("详情查询 - 正在为中药处方记录 ID: {} 加载处方项目", id);
+                println!("详情查询 - 正在为中医中药记录 ID: {} 加载处方项目", id);
                 match load_prescription_items(&conn, id) {
                     Ok(items) => {
                         println!("详情查询 - 成功加载到 {} 个处方项目", items.len());

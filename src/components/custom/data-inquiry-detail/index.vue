@@ -31,9 +31,9 @@
         <ElButton type="warning" @click="handlePrintMedicalFeeList">打印费用清单</ElButton>
         <ElButton type="primary" @click="handlePrintTreatmentPrescription">打印治疗处方单</ElButton>
       </template>
-      <!-- 中药处方：支持打印处方和费用清单 -->
+      <!-- 中医中药：支持打印处方和费用清单 -->
       <template v-if="queryType === 'prescription'">
-        <ElButton type="success" @click="handlePrintPrescription">打印中药处方</ElButton>
+        <ElButton type="success" @click="handlePrintPrescription">打印中医中药</ElButton>
         <!-- <ElButton type="warning" @click="handlePrintPrescriptionFeeList">打印费用清单</ElButton> -->
       </template>
     </template>
@@ -208,7 +208,7 @@
     }
   }
 
-  // 打印中药处方
+  // 打印中医中药
   const handlePrintPrescription = async () => {
     if (!props.selectedItem) {
       ElMessage.warning('请先选择要打印的记录')
@@ -216,7 +216,7 @@
     }
 
     try {
-      // 构建中药处方打印数据
+      // 构建中医中药打印数据
       const prescriptionData: PrescriptionData = {
         customer_name: props.selectedItem.customer_name,
         gender: props.selectedItem.gender,
@@ -239,14 +239,14 @@
       }
 
       await printPrescription(prescriptionData)
-      ElMessage.success('中药处方打印成功')
+      ElMessage.success('中医中药打印成功')
     } catch (error) {
-      console.error('打印中药处方失败:', error)
+      console.error('打印中医中药失败:', error)
       ElMessage.error('打印失败，请重试')
     }
   }
 
-  //   // 打印中药处方费用清单
+  //   // 打印中医中药费用清单
   //   const handlePrintPrescriptionFeeList = async () => {
   //     if (!props.selectedItem) {
   //       ElMessage.warning('请先选择要打印的记录')
@@ -254,7 +254,7 @@
   //     }
 
   //     try {
-  //       // 构建费用清单打印数据（基于中药处方）
+  //       // 构建费用清单打印数据（基于中医中药）
   //       const feeListData: FeeListData = {
   //         customer_name: props.selectedItem.customer_name,
   //         gender: props.selectedItem.gender,

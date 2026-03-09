@@ -1,6 +1,6 @@
 /**
  * 统一医疗记录数据结构
- * 适用于散客登记、门诊病历、中药处方等所有医疗记录类型
+ * 适用于散客登记、门诊病历、中医中药等所有医疗记录类型
  */
 
 /**
@@ -63,7 +63,7 @@ export const TRADE_TYPE_OPTIONS = [
 export const RECORD_TYPE_OPTIONS = [
   { label: '散客登记', value: 'customer' },
   { label: '门诊病历', value: 'medical' },
-  { label: '中药处方', value: 'prescription' }
+  { label: '中医中药', value: 'prescription' }
 ] as const
 
 /**
@@ -89,7 +89,7 @@ export const TRADE_TYPE_LABEL_MAP = {
 export const RECORD_TYPE_LABEL_MAP = {
   customer: '散客登记',
   medical: '门诊病历',
-  prescription: '中药处方'
+  prescription: '中医中药'
 } as const
 
 /**
@@ -204,7 +204,7 @@ export interface UnifiedMedicalRecord {
   /** 治疗方法 */
   treatment_method?: string
 
-  /** ===== 中药处方特有字段 ===== */
+  /** ===== 中医中药特有字段 ===== */
   /** 付数 */
   doses?: number
   /** 单付金额（万分为单位） */
@@ -261,7 +261,7 @@ export interface UnifiedMedicalRecordSearchParams {
   laboratory_examination?: string
   /** 治疗方法（门诊病历） */
   treatment_method?: string
-  /** 付数（中药处方） */
+  /** 付数（中医中药） */
   doses?: number
   /** 最小总金额 */
   min_amount?: number

@@ -71,7 +71,7 @@ impl DatabaseManager {
             [],
         )?;
 
-        // 统一医疗记录主表 (包含散客登记、门诊病历、中药处方的通用信息)
+        // 统一医疗记录主表 (包含散客登记、门诊病历、中医中药的通用信息)
         conn.execute(
             "CREATE TABLE IF NOT EXISTS medical_records (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -98,7 +98,7 @@ impl DatabaseManager {
                 laboratory_examination TEXT,
                 treatment_method TEXT,
                 
-                -- 中药处方特有字段
+                -- 中医中药特有字段
                 doses INTEGER, -- 付数
                 single_dose_amount INTEGER -- 单付金额（以万分为单位）
             )",
@@ -120,7 +120,7 @@ impl DatabaseManager {
             [],
         )?;
 
-        // 中药处方记录表 (记录中药处方详情)
+        // 中医中药记录表 (记录中医中药详情)
         conn.execute(
             "CREATE TABLE IF NOT EXISTS medical_prescription_items (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,

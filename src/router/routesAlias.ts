@@ -21,7 +21,7 @@ export enum RoutesAlias {
   // 健康诊所
   CustomerRegister = '/healing/customer-register', // 散客登记
   MedicalRecord = '/healing/medical-record', // 病历管理
-  ChineseMedicinePrescription = '/healing/chinese-medicine-prescription', // 中药处方
+  ChineseMedicinePrescription = '/healing/chinese-medicine-prescription', // 中医中药
 
   // 诊所管理
   HealingItem = '/management/healing-item', // 诊疗项目

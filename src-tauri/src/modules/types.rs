@@ -27,14 +27,14 @@ pub struct MedicalRecord {
     pub laboratory_examination: Option<String>,
     pub treatment_method: Option<String>,
 
-    // 中药处方特有字段
+    // 中医中药特有字段
     pub doses: Option<i64>,
     pub single_dose_amount: Option<i64>, // 单付金额（以分为单位）
 
     // 关联数据
     // 散客登记/门诊病历
     pub treatment_items: Option<Vec<TreatmentItemRecord>>,
-    // 中药处方
+    // 中医中药
     pub prescription_items: Option<Vec<PrescriptionItemRecord>>,
 }
 
@@ -50,7 +50,7 @@ pub struct TreatmentItemRecord {
     pub created_at: Option<String>,
 }
 
-// 中药处方项目记录
+// 中医中药项目记录
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PrescriptionItemRecord {
     pub id: Option<i64>,

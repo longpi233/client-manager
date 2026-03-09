@@ -1,5 +1,5 @@
 /**
- * 中药处方打印模板
+ * 中医中药打印模板
  */
 import { formatAmountFromTenThousandths } from '../dataprocess'
 import {
@@ -12,7 +12,7 @@ import {
 } from './printUtils'
 
 /**
- * 生成中药处方打印内容
+ * 生成中医中药打印内容
  */
 export const generatePrescriptionHTML = async (data: PrescriptionData): Promise<string> => {
   const institution = await getInstitutionInfo()
@@ -106,7 +106,7 @@ export const generatePrescriptionHTML = async (data: PrescriptionData): Promise<
 }
 
 /**
- * 打印中药处方
+ * 打印中医中药
  */
 export const printPrescription = async (
   data: PrescriptionData,
@@ -114,14 +114,14 @@ export const printPrescription = async (
 ): Promise<void> => {
   try {
     const htmlContent = await generatePrescriptionHTML(data)
-    const filename = `中药处方-${data.customer_name}-${formatDateTime(data.time_of_visit).split(' ')[0]}`
-    printDocument(htmlContent, `中药处方-${data.customer_name}`, {
+    const filename = `中医中药-${data.customer_name}-${formatDateTime(data.time_of_visit).split(' ')[0]}`
+    printDocument(htmlContent, `中医中药-${data.customer_name}`, {
       showPdfOption: true,
       filename,
       ...options
     })
   } catch (error) {
-    console.error('打印中药处方失败:', error)
+    console.error('打印中医中药失败:', error)
     throw error
   }
 }

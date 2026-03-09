@@ -118,8 +118,8 @@
           </ElCol>
         </ElRow>
 
-        <!-- 中药处方区域 -->
-        <ElFormItem label="中药处方">
+        <!-- 中医中药区域 -->
+        <ElFormItem label="中医中药">
           <div class="prescription-section">
             <div class="prescription-header">
               <ElRow :gutter="10" align="middle">
@@ -268,7 +268,7 @@
               <ElButton type="primary" @click="submitRegistration" :loading="loading">
                 提交登记
               </ElButton>
-              <ElButton type="success" @click="printPrescription" plain> 生成中药处方 </ElButton>
+              <ElButton type="success" @click="printPrescription" plain> 生成中医中药 </ElButton>
               <!-- <ElButton type="warning" @click="printFeeList" plain> 生成费用清单 </ElButton> -->
             </div>
           </ElCol>
@@ -585,7 +585,7 @@
       const selectedDoctor = doctorList.value.find((doctor) => doctor.id === Number(form.doctorId))
       const doctorName = selectedDoctor?.name || '未知医师'
 
-      // 构造中药处方数据 (统一API)
+      // 构造中医中药数据 (统一API)
       const prescriptionData = {
         customer_name: form.customerName,
         gender: form.gender,
@@ -644,7 +644,7 @@
       const response = await createPrescriptionRecord(prescriptionData)
 
       if (response.code === 200) {
-        ElMessage.success('中药处方登记成功！')
+        ElMessage.success('中医中药登记成功！')
         console.log('保存成功的处方记录:', response.data)
 
         // 保留表单数据，不自动重置
@@ -653,8 +653,8 @@
         ElMessage.error(`登记失败: ${response.msg}`)
       }
     } catch (error) {
-      console.error('提交中药处方登记失败:', error)
-      ElMessage.error('提交中药处方登记失败，请重试')
+      console.error('提交中医中药登记失败:', error)
+      ElMessage.error('提交中医中药登记失败，请重试')
     } finally {
       loading.value = false
       // 2秒后重置提交状态
@@ -664,12 +664,12 @@
     }
   }
 
-  // 生成中药处方（打印功能）
+  // 生成中医中药（打印功能）
   const printPrescription = async () => {
     try {
       await formRef.value?.validate()
 
-      // 构建中药处方打印数据
+      // 构建中医中药打印数据
       const printData: PrescriptionData = {
         customer_name: form.customerName,
         gender: form.gender,
@@ -695,9 +695,9 @@
       }
 
       printPrescriptionTemplate(printData)
-      ElMessage.success('中药处方打印成功')
+      ElMessage.success('中医中药打印成功')
 
-      ElMessageBox.confirm('是否确认提交中药处方登记？', '提交登记', {
+      ElMessageBox.confirm('是否确认提交中医中药登记？', '提交登记', {
         confirmButtonText: '确认',
         cancelButtonText: '取消',
         type: 'warning'
@@ -709,7 +709,7 @@
           // 用户取消提交
         })
     } catch (error) {
-      console.error('打印中药处方失败:', error)
+      console.error('打印中医中药失败:', error)
       ElMessage.error('请先完善必填信息')
     }
   }

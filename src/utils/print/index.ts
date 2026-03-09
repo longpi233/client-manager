@@ -30,7 +30,7 @@ export { generateMedicalRecordHTML, printMedicalRecord } from './medicalRecordPr
 // 导出费用清单打印
 export { generateFeeListHTML, printFeeList } from './feeListPrint'
 
-// 导出中药处方打印
+// 导出中医中药打印
 export { generatePrescriptionHTML, printPrescription } from './prescriptionPrint'
 
 // 导出治疗处方单打印
