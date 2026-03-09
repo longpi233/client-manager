@@ -103,21 +103,6 @@
           </ElCol>
         </ElRow>
 
-        <ElRow :gutter="20">
-          <ElCol :span="24">
-            <ElFormItem label="备注" prop="note">
-              <ElInput
-                type="textarea"
-                placeholder="请输入备注"
-                v-model="form.note"
-                show-word-limit
-                maxlength="100"
-                :rows="2"
-              />
-            </ElFormItem>
-          </ElCol>
-        </ElRow>
-
         <!-- 治疗项目区域 -->
         <ElFormItem label="治疗项目">
           <div class="treatment-section">
@@ -212,6 +197,21 @@
             </div>
           </div>
         </ElFormItem>
+
+        <ElRow :gutter="20">
+          <ElCol :span="24">
+            <ElFormItem label="备注" prop="note">
+              <ElInput
+                type="textarea"
+                placeholder="请输入备注"
+                v-model="form.note"
+                show-word-limit
+                maxlength="100"
+                :rows="2"
+              />
+            </ElFormItem>
+          </ElCol>
+        </ElRow>
 
         <!-- 总金额显示 -->
         <ElRow :gutter="20">

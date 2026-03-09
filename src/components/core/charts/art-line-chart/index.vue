@@ -35,6 +35,9 @@
     symbol: 'none',
     symbolSize: 6,
     animationDelay: 200,
+    showLabel: false,
+    labelPosition: 'top',
+    labelFormatter: '',
 
     // 轴线显示配置
     showAxisLabel: true,
@@ -46,6 +49,29 @@
     showLegend: false,
     legendPosition: 'bottom'
   })
+
+  // 标签格式化器解析（支持函数或函数字符串）
+  const parseLabelFormatter = () => {
+    if (!props.labelFormatter) return undefined
+
+    if (typeof props.labelFormatter === 'function') {
+      return props.labelFormatter
+    }
+
+    if (typeof props.labelFormatter === 'string') {
+      const formatter = props.labelFormatter.trim()
+      if (!formatter) return undefined
+
+      try {
+        // 支持传入："function(params) { ... }" 或 "(params) => ..."
+        return new Function(`return (${formatter})`)()
+      } catch (error) {
+        console.warn('ArtLineChart labelFormatter 解析失败，将回退默认格式:', error)
+      }
+    }
+
+    return undefined
+  }
 
   // 使用基础的 useChart hook
   const {
@@ -207,21 +233,40 @@
     lineWidth?: number
     areaStyle?: any
   }) => {
+    const parsedFormatter = parseLabelFormatter()
+    const resolvedSymbol = config.symbol ?? props.symbol
+    const shouldForceSymbol = props.showLabel && resolvedSymbol === 'none'
+
     return {
       name: config.name,
       data: config.data,
       type: 'line' as const,
       color: config.color,
       smooth: config.smooth ?? props.smooth,
-      symbol: config.symbol ?? props.symbol,
+      symbol: shouldForceSymbol ? 'circle' : resolvedSymbol,
+      showSymbol: props.showLabel || resolvedSymbol !== 'none',
       symbolSize: config.symbolSize ?? props.symbolSize,
       lineStyle: {
         width: config.lineWidth ?? props.lineWidth,
         color: config.color
       },
+      label: {
+        show: props.showLabel,
+        position: props.labelPosition,
+        distance: 8,
+        formatter:
+          parsedFormatter ||
+          ((params: { value: number }) => {
+            const value = Number(params.value || 0)
+            return `${value.toLocaleString()}`
+          })
+      },
       areaStyle: config.areaStyle,
       emphasis: {
         focus: 'series' as const,
+        label: {
+          show: props.showLabel
+        },
         lineStyle: {
           width: (config.lineWidth ?? props.lineWidth) + 1
         }
@@ -236,7 +281,7 @@
       animationDuration: isInitial ? 0 : 1300,
       animationDurationUpdate: isInitial ? 0 : 1300,
       grid: getGridWithLegend(props.showLegend && isMultipleData.value, props.legendPosition, {
-        top: 15,
+        top: props.showLabel ? 36 : 15,
         right: 15,
         left: 0
       }),

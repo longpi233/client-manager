@@ -141,6 +141,12 @@ export interface LineChartProps extends BaseChartProps, AxisDisplayProps, Intera
   symbolSize?: number
   /** 多数据动画延迟间隔（毫秒） */
   animationDelay?: number
+  /** 是否显示数据标签 */
+  showLabel?: boolean
+  /** 数据标签位置 */
+  labelPosition?: 'top' | 'bottom' | 'left' | 'right' | 'inside'
+  /** 数据标签格式化器（函数或函数字符串） */
+  labelFormatter?: string | ((params: any) => string)
 }
 
 // 雷达图数据项接口

@@ -351,12 +351,14 @@
               :x-axis-data="revenueChartData.xAxisData"
               :colors="['#409EFF']"
               height="20rem"
+              margin-right="-100px"
               :show-tooltip="true"
               :show-legend="false"
               :smooth="true"
               :show-area="true"
-              tooltip-formatter="function(params) { return params[0].name + '<br/>' + params[0].marker + '营业额: ¥' + params[0].value.toLocaleString() + '元'; }"
-              y-axis-formatter="function(value) { return '¥' + value.toLocaleString(); }"
+              :show-label="true"
+              label-position="top"
+              label-formatter="(params) => '¥' + Number(params.value || 0).toLocaleString() + '元'"
             />
           </div>
         </ElCol>
@@ -758,7 +760,7 @@
 
       // 设置获取所有数据的参数
       searchParams.current = 1
-      searchParams.size = 10000
+      searchParams.size = 20
 
       console.log('门诊日志查询参数:', searchParams)
 
