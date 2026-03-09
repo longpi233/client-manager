@@ -393,14 +393,23 @@
         name: ''
       })
       if (res.code === 200) {
-        chineseMedicines.value = res.data.records
-        filteredChineseMedicines.value = res.data.records
+        chineseMedicines.value = res.data.records || []
+        filteredChineseMedicines.value = res.data.records || []
+        console.log('成功加载中药列表，共', chineseMedicines.value.length, '条记录')
+
+        // 数据验证：检查是否有价格为0的药品（可能提示数据库问题）
+        const zeroPrice = chineseMedicines.value.filter((m) => !m.unit_price || m.unit_price === 0)
+        if (zeroPrice.length > 0) {
+          const zeroPriceNames = zeroPrice.map((m) => m.name)
+          console.warn('发现', zeroPrice.length, '条药品单价为0或未定义', zeroPriceNames)
+        }
       } else {
         console.error('获取中药列表失败:', res.msg)
+        ElMessage.error(`获取中药列表失败: ${res.msg}`)
       }
     } catch (error) {
       console.error('加载中药列表失败:', error)
-      ElMessage.error('加载中药列表失败')
+      ElMessage.error('加载中药列表失败，请检查网络连接')
     }
   }
 
@@ -419,10 +428,31 @@
         name: query
       })
       if (res.code === 200) {
-        filteredChineseMedicines.value = res.data.records
+        const records = res.data.records
+        // 关键修复：同时更新 filteredChineseMedicines 和 chineseMedicines
+        // 确保搜索结果也被加入主列表，避免后续 getUnitPriceTenThousandths 查找失败
+        filteredChineseMedicines.value = records
+
+        // 合并新搜索结果到主列表（避免重复）
+        records.forEach((newMedicine) => {
+          if (!chineseMedicines.value.find((m) => m.id === newMedicine.id)) {
+            chineseMedicines.value.push(newMedicine)
+          }
+        })
+
+        console.log('搜索中药成功，共获得', records.length, '条记录')
+      } else {
+        console.error('搜索中药API返回错误:', res.msg)
+        ElMessage.warning(`搜索中药失败: ${res.msg}`)
+        // 降级处理：本地过滤搜索
+        const filtered = chineseMedicines.value.filter((item) =>
+          item.name.toLowerCase().includes(query.toLowerCase())
+        )
+        filteredChineseMedicines.value = filtered
       }
     } catch (error) {
-      console.error('搜索中药失败:', error)
+      console.error('搜索中药请求失败:', error)
+      ElMessage.error('搜索中药请求失败，请检查网络连接')
       // 本地过滤搜索作为备选
       const filtered = chineseMedicines.value.filter((item) =>
         item.name.toLowerCase().includes(query.toLowerCase())
@@ -438,15 +468,31 @@
     calculateTotalPrice()
   }
 
-  // 获取单价
+  // 获取单价（关键函数：务必确保能查找到价格）
   const getUnitPriceTenThousandths = (medicineName: string): number => {
-    if (!medicineName) return 0
+    if (!medicineName) {
+      console.warn('getUnitPriceTenThousandths: 药品名称为空')
+      return 0
+    }
 
     const medicine = chineseMedicines.value.find((item) => item.name === medicineName)
-    if (!medicine) return 0
+    if (!medicine) {
+      console.warn(`getUnitPriceTenThousandths: 未找到药品 "${medicineName}"，可能原因：`, {
+        chineseMedicinesCount: chineseMedicines.value.length,
+        medicineNameList: chineseMedicines.value.map((m) => m.name).slice(0, 5)
+      })
+      return 0
+    }
+
+    const unitPrice = medicine.unit_price || 0
+    if (unitPrice === 0) {
+      console.warn(`getUnitPriceTenThousandths: 药品 "${medicineName}" 的单价为0或未定义`, {
+        medicine
+      })
+    }
 
     // medicine.unit_price 以万分为单位存储
-    return medicine.unit_price
+    return unitPrice
   }
 
   // 计算单付金额（显示为元）
@@ -472,6 +518,13 @@
   const calculateTotalPrice = () => {
     // 触发响应式更新
     nextTick()
+  }
+
+  // 时间格式转换工具函数
+  const formatDateTime = (dateTime: Date | string): string => {
+    if (!dateTime) return ''
+    if (typeof dateTime === 'string') return dateTime
+    return dateTime.toISOString().slice(0, 19).replace('T', ' ')
   }
 
   // 添加中药项目
@@ -542,6 +595,15 @@
         prescription_items: form.prescription.map((item) => {
           const unitPrice = getUnitPriceTenThousandths(item.medicineName)
           const totalPrice = Math.round(unitPrice * item.grams)
+
+          // 添加调试日志
+          if (unitPrice === 0) {
+            console.error(`警告：药品 "${item.medicineName}" 的单价为0`, {
+              grams: item.grams,
+              calculatedTotalPrice: totalPrice
+            })
+          }
+
           return {
             medicine_name: item.medicineName,
             grams: item.grams,
@@ -553,10 +615,7 @@
         // 计算单付金额和总金额（以万分为单位），使用 convertYuanToTenThousandths 避免浮点精度问题
         single_dose_amount: singleDoseAmountTenThousandths.value, // 转换为万分
         total_amount: totalAmountTenThousandths.value, // 转换为万分
-        time_of_visit:
-          form.timeOfVisit instanceof Date
-            ? form.timeOfVisit.toISOString().slice(0, 19).replace('T', ' ')
-            : form.timeOfVisit,
+        time_of_visit: formatDateTime(form.timeOfVisit),
         trade_type: form.tradeType,
         note: form.note || undefined,
         doctor_id: form.doctorId ? Number(form.doctorId) : undefined,
@@ -564,6 +623,22 @@
       }
 
       console.log('准备发送的处方数据 (统一API):', prescriptionData)
+
+      // 数据验证
+      const hasPriceZero = prescriptionData.prescription_items.some((item) => item.unit_price === 0)
+      if (hasPriceZero) {
+        const confirmation = await ElMessageBox.confirm(
+          '检测到部分药品单价为0，可能是查询失败。是否强制提交？',
+          '数据验证警告',
+          {
+            confirmButtonText: '强制提交',
+            cancelButtonText: '取消',
+            type: 'warning'
+          }
+        ).catch(() => false)
+
+        if (!confirmation) return
+      }
 
       // 调用后端API保存处方 (统一API)
       const response = await createPrescriptionRecord(prescriptionData)
@@ -600,10 +675,7 @@
         gender: form.gender,
         age: form.age || 0,
         telephone: form.telephone,
-        time_of_visit:
-          typeof form.timeOfVisit === 'string'
-            ? form.timeOfVisit
-            : form.timeOfVisit.toISOString().slice(0, 19).replace('T', ' '),
+        time_of_visit: formatDateTime(form.timeOfVisit),
         trade_type: form.tradeType,
         diagnosis: form.diagnosis,
         note: form.note,

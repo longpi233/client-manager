@@ -351,11 +351,23 @@
         name: ''
       })
       if (res.code === 200) {
-        healingItems.value = res.data.records
-        filteredHealingItems.value = res.data.records
+        healingItems.value = res.data.records || []
+        filteredHealingItems.value = res.data.records || []
+        console.log('成功加载康复项目列表，共', healingItems.value.length, '条记录')
+
+        // 数据验证：检查是否有价格为0的项目（可能提示数据库问题）
+        const zeroPrice = healingItems.value.filter((item) => !item.price || item.price === 0)
+        if (zeroPrice.length > 0) {
+          const zeroPriceNames = zeroPrice.map((item) => item.name)
+          console.warn('发现', zeroPrice.length, '条康复项目单价为0或未定义', zeroPriceNames)
+        }
+      } else {
+        console.error('获取康复项目失败:', res.msg)
+        ElMessage.error(`获取康复项目失败: ${res.msg}`)
       }
     } catch (error) {
       console.error('获取康复项目失败:', error)
+      ElMessage.error('加载康复项目失败，请检查网络连接')
     }
   }
 
@@ -374,18 +386,65 @@
         name: query
       })
       if (res.code === 200) {
-        filteredHealingItems.value = res.data.records
+        const records = res.data.records
+        // 关键修复：同时更新 filteredHealingItems 和 healingItems
+        // 确保搜索结果也被加入主列表，避免后续 getUnitPriceTenThousandths 查找失败
+        filteredHealingItems.value = records
+
+        // 合并新搜索结果到主列表（避免重复）
+        records.forEach((newItem) => {
+          if (!healingItems.value.find((item) => item.id === newItem.id)) {
+            healingItems.value.push(newItem)
+          }
+        })
+
+        console.log('搜索康复项目成功，共获得', records.length, '条记录')
+      } else {
+        console.error('搜索康复项目API返回错误:', res.msg)
+        ElMessage.warning(`搜索康复项目失败: ${res.msg}`)
+        // 降级处理：本地过滤搜索
+        const filtered = healingItems.value.filter((item) =>
+          item.name.toLowerCase().includes(query.toLowerCase())
+        )
+        filteredHealingItems.value = filtered
       }
     } catch (error) {
-      console.error('搜索康复项目失败:', error)
+      console.error('搜索康复项目请求失败:', error)
+      ElMessage.error('搜索康复项目请求失败，请检查网络连接')
+      // 本地过滤搜索作为备选
+      const filtered = healingItems.value.filter((item) =>
+        item.name.toLowerCase().includes(query.toLowerCase())
+      )
+      filteredHealingItems.value = filtered
     } finally {
       healingItemsLoading.value = false
     }
   }
 
+  // 获取单价（关键函数：务必确保能查找到价格）
   const getUnitPriceTenThousandths = (name: string): number => {
+    if (!name) {
+      console.warn('getUnitPriceTenThousandths: 康复项目名称为空')
+      return 0
+    }
+
     const item = healingItems.value.find((item) => item.name === name)
-    return item ? item.price : 0
+    if (!item) {
+      console.warn(`getUnitPriceTenThousandths: 未找到康复项目 "${name}"，可能原因：`, {
+        healingItemsCount: healingItems.value.length,
+        itemNameList: healingItems.value.map((item) => item.name).slice(0, 5)
+      })
+      return 0
+    }
+
+    const price = item.price || 0
+    if (price === 0) {
+      console.warn(`getUnitPriceTenThousandths: 康复项目 "${name}" 的单价为0或未定义`, {
+        item
+      })
+    }
+
+    return price
   }
 
   // 计算总金额（显示为元）
@@ -512,17 +571,42 @@
         note: form.value.note,
         total_amount: totalAmountTenThousandths.value,
         treatment_items: form.value.treatment.map((item) => {
-          const healingItem = healingItems.value.find((h) => h.name === item.treatmentItem)
+          const unitPrice = getUnitPriceTenThousandths(item.treatmentItem)
+
+          // 添加调试日志
+          if (unitPrice === 0) {
+            console.error(`警告：康复项目 "${item.treatmentItem}" 的单价为0`, {
+              count: item.count,
+              calculatedTotalPrice: unitPrice * item.count
+            })
+          }
+
           return {
             treatment_item: item.treatmentItem,
             count: item.count,
-            unit_price: healingItem?.price || 0,
-            total_price: (healingItem?.price || 0) * item.count
+            unit_price: unitPrice,
+            total_price: unitPrice * item.count
           }
         })
       }
 
       console.log('准备创建散客登记记录 (统一API):', unifiedRecordData)
+
+      // 数据验证
+      const hasPriceZero = unifiedRecordData.treatment_items.some((item) => item.unit_price === 0)
+      if (hasPriceZero) {
+        const confirmation = await ElMessageBox.confirm(
+          '检测到部分康复项目单价为0，可能是查询失败。是否强制提交？',
+          '数据验证警告',
+          {
+            confirmButtonText: '强制提交',
+            cancelButtonText: '取消',
+            type: 'warning'
+          }
+        ).catch(() => false)
+
+        if (!confirmation) return
+      }
 
       const response = await createCustomerRecord(unifiedRecordData)
       console.log('散客登记响应 (统一API):', response)

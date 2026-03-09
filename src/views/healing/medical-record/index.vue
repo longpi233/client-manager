@@ -467,14 +467,23 @@
         name: ''
       })
       if (res.code === 200) {
-        healingItems.value = res.data.records
-        filteredHealingItems.value = res.data.records
+        healingItems.value = res.data.records || []
+        filteredHealingItems.value = res.data.records || []
+        console.log('成功加载治疗项目列表，共', healingItems.value.length, '条记录')
+
+        // 数据验证：检查是否有价格为0的项目（可能提示数据库问题）
+        const zeroPrice = healingItems.value.filter((item) => !item.price || item.price === 0)
+        if (zeroPrice.length > 0) {
+          const zeroPriceNames = zeroPrice.map((item) => item.name)
+          console.warn('发现', zeroPrice.length, '条治疗项目单价为0或未定义', zeroPriceNames)
+        }
       } else {
         console.error('获取康养项目失败:', res.msg)
+        ElMessage.error(`获取治疗项目失败: ${res.msg}`)
       }
     } catch (error) {
       console.error('加载治疗项目失败:', error)
-      ElMessage.error('加载治疗项目失败')
+      ElMessage.error('加载治疗项目失败，请检查网络连接')
     }
   }
 
@@ -493,10 +502,31 @@
         name: query
       })
       if (res.code === 200) {
-        filteredHealingItems.value = res.data.records
+        const records = res.data.records
+        // 关键修复：同时更新 filteredHealingItems 和 healingItems
+        // 确保搜索结果也被加入主列表，避免后续 getUnitPriceTenThousandths 查找失败
+        filteredHealingItems.value = records
+
+        // 合并新搜索结果到主列表（避免重复）
+        records.forEach((newItem) => {
+          if (!healingItems.value.find((item) => item.id === newItem.id)) {
+            healingItems.value.push(newItem)
+          }
+        })
+
+        console.log('搜索治疗项目成功，共获得', records.length, '条记录')
+      } else {
+        console.error('搜索治疗项目API返回错误:', res.msg)
+        ElMessage.warning(`搜索治疗项目失败: ${res.msg}`)
+        // 降级处理：本地过滤搜索
+        const filtered = healingItems.value.filter((item) =>
+          item.name.toLowerCase().includes(query.toLowerCase())
+        )
+        filteredHealingItems.value = filtered
       }
     } catch (error) {
-      console.error('搜索治疗项目失败:', error)
+      console.error('搜索治疗项目请求失败:', error)
+      ElMessage.error('搜索治疗项目请求失败，请检查网络连接')
       // 本地过滤搜索作为备选
       const filtered = healingItems.value.filter((item) =>
         item.name.toLowerCase().includes(query.toLowerCase())
@@ -511,10 +541,30 @@
   const handleTreatmentItemChange = () => {
     calculateTotalPrice()
   }
-  // 获取单价（显示为万分）
+  // 获取单价（关键函数：务必确保能查找到价格）
   const getUnitPriceTenThousandths = (name: string): number => {
+    if (!name) {
+      console.warn('getUnitPriceTenThousandths: 治疗项目名称为空')
+      return 0
+    }
+
     const healingItem = healingItems.value.find((item) => item.name === name)
-    return healingItem ? healingItem.price : 0
+    if (!healingItem) {
+      console.warn(`getUnitPriceTenThousandths: 未找到治疗项目 "${name}"，可能原因：`, {
+        healingItemsCount: healingItems.value.length,
+        itemNameList: healingItems.value.map((item) => item.name).slice(0, 5)
+      })
+      return 0
+    }
+
+    const price = healingItem.price || 0
+    if (price === 0) {
+      console.warn(`getUnitPriceTenThousandths: 治疗项目 "${name}" 的单价为0或未定义`, {
+        healingItem
+      })
+    }
+
+    return price
   }
 
   // 计算总金额（显示为元）
@@ -531,6 +581,13 @@
   const calculateTotalPrice = () => {
     // 触发响应式更新
     nextTick()
+  }
+
+  // 时间格式转换工具函数
+  const formatDateTime = (dateTime: Date | string): string => {
+    if (!dateTime) return ''
+    if (typeof dateTime === 'string') return dateTime
+    return dateTime.toISOString().slice(0, 19).replace('T', ' ')
   }
 
   // 添加治疗项目
@@ -598,10 +655,7 @@
         gender: form.gender,
         age: form.age || 0,
         telephone: form.telephone,
-        time_of_visit:
-          typeof form.timeOfVisit === 'string'
-            ? form.timeOfVisit
-            : new Date(form.timeOfVisit).toISOString().slice(0, 19).replace('T', ' '),
+        time_of_visit: formatDateTime(form.timeOfVisit),
         trade_type: form.tradeType,
         chief_complaint: form.chiefComplaint,
         illness_history: form.illnessHistory,
@@ -613,8 +667,16 @@
         note: form.note,
         total_amount: totalAmountTenThousandths.value,
         treatment_items: form.treatment.map((item) => {
-          const healingItem = healingItems.value.find((hi) => hi.name === item.treatmentItem)
-          const unitPrice = healingItem ? healingItem.price : 0
+          const unitPrice = getUnitPriceTenThousandths(item.treatmentItem)
+
+          // 添加调试日志
+          if (unitPrice === 0) {
+            console.error(`警告：治疗项目 "${item.treatmentItem}" 的单价为0`, {
+              count: item.count,
+              calculatedTotalPrice: unitPrice * item.count
+            })
+          }
+
           return {
             treatment_item: item.treatmentItem,
             count: item.count,
@@ -624,6 +686,24 @@
         }),
         doctor_id: parseInt(form.doctorId),
         doctor_name: doctorList.value.find((doctor) => doctor.id === parseInt(form.doctorId))?.name
+      }
+
+      console.log('准备发送的门诊病历数据 (统一API):', medicalRecordData)
+
+      // 数据验证
+      const hasPriceZero = medicalRecordData.treatment_items.some((item) => item.unit_price === 0)
+      if (hasPriceZero) {
+        const confirmation = await ElMessageBox.confirm(
+          '检测到部分治疗项目单价为0，可能是查询失败。是否强制提交？',
+          '数据验证警告',
+          {
+            confirmButtonText: '强制提交',
+            cancelButtonText: '取消',
+            type: 'warning'
+          }
+        ).catch(() => false)
+
+        if (!confirmation) return
       }
 
       // 调用后端API创建门诊病历 (统一API)
