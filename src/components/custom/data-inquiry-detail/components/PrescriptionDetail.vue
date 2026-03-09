@@ -10,9 +10,20 @@
         formatDateTime(data.time_of_visit)
       }}</ElDescriptionsItem>
       <ElDescriptionsItem label="医师">{{ data.doctor_name }}</ElDescriptionsItem>
-      <ElDescriptionsItem label="付数">{{ data.doses }}付</ElDescriptionsItem>
-      <ElDescriptionsItem label="诊断" :span="3">{{ data.diagnosis }}</ElDescriptionsItem>
-      <ElDescriptionsItem label="备注">{{ data.note || '-' }}</ElDescriptionsItem>
+      <ElDescriptionsItem label="结算类型">{{
+        getTradeTypeName(data.trade_type)
+      }}</ElDescriptionsItem>
+    </ElDescriptions>
+
+    <ElDescriptions title="诊疗信息" :column="1" border>
+      <ElDescriptionsItem label="诊断">{{ data.diagnosis || '-' }}</ElDescriptionsItem>
+      <ElDescriptionsItem label="主诉">{{ data.chief_complaint || '-' }}</ElDescriptionsItem>
+      <ElDescriptionsItem label="现病史">{{ data.illness_history || '-' }}</ElDescriptionsItem>
+      <ElDescriptionsItem label="既往史">{{ data.past_history || '-' }}</ElDescriptionsItem>
+      <ElDescriptionsItem label="舌象脉象">{{
+        data.physical_examination || '-'
+      }}</ElDescriptionsItem>
+      <ElDescriptionsItem label="治法治则">{{ data.treatment_method || '-' }}</ElDescriptionsItem>
     </ElDescriptions>
 
     <h4 style="margin: 20px 0 10px">处方明细</h4>
@@ -41,6 +52,7 @@
     >
       <h5 style="margin: 0 0 16px; color: var(--el-text-color-primary)">费用汇总</h5>
       <ElDescriptions :column="4" border>
+        <ElDescriptionsItem label="付数">{{ data.doses }}付</ElDescriptionsItem>
         <ElDescriptionsItem label="单付金额">
           {{
             formatAmountFromTenThousandths(
@@ -70,7 +82,8 @@
   import {
     formatDateTime,
     formatGender,
-    formatAmountFromTenThousandths
+    formatAmountFromTenThousandths,
+    getTradeTypeName
   } from '@/utils/dataprocess/medicalFormatter'
   import type { UnifiedMedicalRecord } from '@/types/medical'
 

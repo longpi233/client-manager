@@ -33,8 +33,8 @@
       </template>
       <!-- 中医中药：支持打印处方和费用清单 -->
       <template v-if="queryType === 'prescription'">
+        <ElButton type="primary" @click="handleChineseMedicalRecord">打印中医病历</ElButton>
         <ElButton type="success" @click="handlePrintPrescription">打印中医中药</ElButton>
-        <!-- <ElButton type="warning" @click="handlePrintPrescriptionFeeList">打印费用清单</ElButton> -->
       </template>
     </template>
   </ElDialog>
@@ -51,6 +51,7 @@
     printFeeList,
     printPrescription,
     printTreatmentPrescription,
+    printChineseMedicalRecord,
     type MedicalRecordData,
     type FeeListData,
     type PrescriptionData,
@@ -204,6 +205,48 @@
       ElMessage.success('治疗处方单打印成功')
     } catch (error) {
       console.error('打印治疗处方单失败:', error)
+      ElMessage.error('打印失败，请重试')
+    }
+  }
+
+  // 打印中医病历
+  const handleChineseMedicalRecord = async () => {
+    if (!props.selectedItem) {
+      ElMessage.warning('请先选择要打印的记录')
+      return
+    }
+
+    try {
+      // 构建中医病历打印数据
+      const medicalRecordData: PrescriptionData = {
+        customer_name: props.selectedItem.customer_name,
+        gender: props.selectedItem.gender,
+        age: props.selectedItem.age,
+        telephone: props.selectedItem.telephone,
+        time_of_visit: props.selectedItem.time_of_visit,
+        trade_type: props.selectedItem.trade_type,
+        chief_complaint: props.selectedItem.chief_complaint || undefined,
+        illness_history: props.selectedItem.illness_history || undefined,
+        past_history: props.selectedItem.past_history || undefined,
+        physical_examination: props.selectedItem.physical_examination || undefined,
+        diagnosis: props.selectedItem.diagnosis,
+        treatment_method: props.selectedItem.treatment_method || undefined,
+        prescription_items: (props.selectedItem.prescription_items || []).map((item: any) => ({
+          medicine_name: item.medicine_name,
+          grams: item.grams,
+          unit_price: item.unit_price,
+          total_price: item.total_price
+        })),
+        doses: props.selectedItem.doses,
+        single_dose_amount: props.selectedItem.single_dose_amount,
+        total_amount: props.selectedItem.total_amount,
+        doctor_name: props.selectedItem.doctor_name
+      }
+
+      await printChineseMedicalRecord(medicalRecordData)
+      ElMessage.success('中医病历打印成功')
+    } catch (error) {
+      console.error('打印中医病历失败:', error)
       ElMessage.error('打印失败，请重试')
     }
   }

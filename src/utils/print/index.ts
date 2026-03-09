@@ -31,7 +31,12 @@ export { generateMedicalRecordHTML, printMedicalRecord } from './medicalRecordPr
 export { generateFeeListHTML, printFeeList } from './feeListPrint'
 
 // 导出中医中药打印
-export { generatePrescriptionHTML, printPrescription } from './prescriptionPrint'
+export {
+  generatePrescriptionHTML,
+  printPrescription,
+  generateChineseMedicalRecordHTML,
+  printChineseMedicalRecord
+} from './prescriptionPrint'
 
 // 导出治疗处方单打印
 export {

@@ -29,6 +29,11 @@ export interface MedicalRecordData extends PrintableItem {
 }
 
 export interface PrescriptionData extends PrintableItem {
+  chief_complaint?: string
+  illness_history?: string
+  past_history?: string
+  physical_examination?: string
+  treatment_method?: string
   prescription_items?: PrescriptionItem[]
   doses?: number
   single_dose_amount?: number // 单付金额（分）

@@ -87,6 +87,67 @@
           </ElCol>
         </ElRow>
 
+        <!-- 病史信息区域 -->
+        <ElRow :gutter="20">
+          <ElCol :span="24">
+            <ElFormItem label="主诉" prop="chiefComplaint">
+              <ElInput
+                type="textarea"
+                placeholder="请输入主诉"
+                v-model="form.chiefComplaint"
+                show-word-limit
+                maxlength="50"
+                :rows="2"
+              />
+            </ElFormItem>
+          </ElCol>
+        </ElRow>
+
+        <ElRow :gutter="20">
+          <ElCol :span="24">
+            <ElFormItem label="现病史" prop="illnessHistory">
+              <ElInput
+                type="textarea"
+                placeholder="请输入现病史"
+                v-model="form.illnessHistory"
+                show-word-limit
+                maxlength="200"
+                :rows="3"
+              />
+            </ElFormItem>
+          </ElCol>
+        </ElRow>
+
+        <ElRow :gutter="20">
+          <ElCol :span="24">
+            <ElFormItem label="既往史" prop="pastHistory">
+              <ElInput
+                type="textarea"
+                placeholder="请输入既往史"
+                v-model="form.pastHistory"
+                show-word-limit
+                maxlength="200"
+                :rows="3"
+              />
+            </ElFormItem>
+          </ElCol>
+        </ElRow>
+
+        <ElRow :gutter="20">
+          <ElCol :span="24">
+            <ElFormItem label="舌象脉象" prop="tonguePulseSign">
+              <ElInput
+                type="textarea"
+                placeholder="请输入舌象脉象"
+                v-model="form.tonguePulseSign"
+                show-word-limit
+                maxlength="200"
+                :rows="3"
+              />
+            </ElFormItem>
+          </ElCol>
+        </ElRow>
+
         <!-- 诊断信息区域 -->
         <ElRow :gutter="20">
           <ElCol :span="24">
@@ -105,11 +166,11 @@
 
         <ElRow :gutter="20">
           <ElCol :span="24">
-            <ElFormItem label="备注" prop="note">
+            <ElFormItem label="治法治则" prop="treatmentMethod">
               <ElInput
                 type="textarea"
-                placeholder="请输入备注"
-                v-model="form.note"
+                placeholder="请输入治法治则"
+                v-model="form.treatmentMethod"
                 show-word-limit
                 maxlength="100"
                 :rows="2"
@@ -268,6 +329,9 @@
               <ElButton type="primary" @click="submitRegistration" :loading="loading">
                 提交登记
               </ElButton>
+              <ElButton type="warning" @click="printChineseMedicalRecord" plain>
+                生成中医病历
+              </ElButton>
               <ElButton type="success" @click="printPrescription" plain> 生成中医中药 </ElButton>
               <!-- <ElButton type="warning" @click="printFeeList" plain> 生成费用清单 </ElButton> -->
             </div>
@@ -303,6 +367,7 @@
   import { GENDER_OPTIONS, TRADE_TYPE_OPTIONS } from '@/types/medical'
   import {
     printPrescription as printPrescriptionTemplate,
+    printChineseMedicalRecord as printChineseMedicalRecordTemplate,
     // printFeeList as printFeeListTemplate,
     type PrescriptionData
     // type FeeListData
@@ -325,8 +390,12 @@
     telephone: '',
     timeOfVisit: new Date(),
     tradeType: '',
+    chiefComplaint: '',
+    illnessHistory: '',
+    pastHistory: '',
+    tonguePulseSign: '',
     diagnosis: '',
-    note: '',
+    treatmentMethod: '',
     prescription: [{ medicineName: '', grams: 10 }] as PrescriptionFormItem[],
     doses: null as number | null,
     doctorId: ''
@@ -343,7 +412,12 @@
     telephone: [{ pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号格式', trigger: 'blur' }],
     timeOfVisit: [{ required: true, message: '请选择就诊时间', trigger: 'change' }],
     tradeType: [{ required: true, message: '请选择结算类型', trigger: 'change' }],
+    chiefComplaint: [{ required: true, message: '请输入主诉', trigger: 'blur' }],
+    illnessHistory: [{ required: true, message: '请输入现病史', trigger: 'blur' }],
+    pastHistory: [{ required: true, message: '请输入既往史', trigger: 'blur' }],
+    tonguePulseSign: [{ required: true, message: '请输入舌象脉象', trigger: 'blur' }],
     diagnosis: [{ required: true, message: '请输入诊断', trigger: 'blur' }],
+    treatmentMethod: [{ required: true, message: '请输入治法治则', trigger: 'blur' }],
     doses: [
       { required: true, message: '请输入付数', trigger: 'blur' },
       { type: 'number', min: 1, message: '付数不能小于1', trigger: 'blur' }
@@ -591,7 +665,12 @@
         gender: form.gender,
         age: form.age!,
         telephone: form.telephone,
+        chief_complaint: form.chiefComplaint || undefined,
+        illness_history: form.illnessHistory || undefined,
+        past_history: form.pastHistory || undefined,
+        physical_examination: form.tonguePulseSign || undefined,
         diagnosis: form.diagnosis,
+        treatment_method: form.treatmentMethod || undefined,
         prescription_items: form.prescription.map((item) => {
           const unitPrice = getUnitPriceTenThousandths(item.medicineName)
           const totalPrice = Math.round(unitPrice * item.grams)
@@ -617,7 +696,6 @@
         total_amount: totalAmountTenThousandths.value, // 转换为万分
         time_of_visit: formatDateTime(form.timeOfVisit),
         trade_type: form.tradeType,
-        note: form.note || undefined,
         doctor_id: form.doctorId ? Number(form.doctorId) : undefined,
         doctor_name: doctorName
       }
@@ -677,8 +755,12 @@
         telephone: form.telephone,
         time_of_visit: formatDateTime(form.timeOfVisit),
         trade_type: form.tradeType,
+        chief_complaint: form.chiefComplaint || undefined,
+        illness_history: form.illnessHistory || undefined,
+        past_history: form.pastHistory || undefined,
+        physical_examination: form.tonguePulseSign || undefined,
         diagnosis: form.diagnosis,
-        note: form.note,
+        treatment_method: form.treatmentMethod || undefined,
         prescription_items: form.prescription.map((item) => {
           const unitPriceInTenThousandths = getUnitPriceTenThousandths(item.medicineName) // 价格以万分为单位
           return {
@@ -710,6 +792,47 @@
         })
     } catch (error) {
       console.error('打印中医中药失败:', error)
+      ElMessage.error('请先完善必填信息')
+    }
+  }
+
+  // 生成中医病历（打印功能）
+  const printChineseMedicalRecord = async () => {
+    try {
+      await formRef.value?.validate()
+
+      const printData: PrescriptionData = {
+        customer_name: form.customerName,
+        gender: form.gender,
+        age: form.age || 0,
+        telephone: form.telephone,
+        time_of_visit: formatDateTime(form.timeOfVisit),
+        trade_type: form.tradeType,
+        chief_complaint: form.chiefComplaint || undefined,
+        illness_history: form.illnessHistory || undefined,
+        past_history: form.pastHistory || undefined,
+        physical_examination: form.tonguePulseSign || undefined,
+        diagnosis: form.diagnosis,
+        treatment_method: form.treatmentMethod || undefined,
+        prescription_items: form.prescription.map((item) => {
+          const unitPriceInTenThousandths = getUnitPriceTenThousandths(item.medicineName)
+          return {
+            medicine_name: item.medicineName,
+            grams: item.grams,
+            unit_price: unitPriceInTenThousandths,
+            total_price: unitPriceInTenThousandths * item.grams
+          }
+        }),
+        doses: form.doses || 1,
+        single_dose_amount: singleDoseAmountTenThousandths.value,
+        total_amount: totalAmountTenThousandths.value,
+        doctor_name: doctorList.value.find((doctor) => doctor.id === parseInt(form.doctorId))?.name
+      }
+
+      await printChineseMedicalRecordTemplate(printData)
+      ElMessage.success('中医病历打印成功')
+    } catch (error) {
+      console.error('打印中医病历失败:', error)
       ElMessage.error('请先完善必填信息')
     }
   }
