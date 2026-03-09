@@ -179,8 +179,8 @@
           </ElCol>
         </ElRow>
 
-        <!-- 中医中药区域 -->
-        <ElFormItem label="中医中药">
+        <!-- 中药处方区域 -->
+        <ElFormItem label="中药处方">
           <div class="prescription-section">
             <div class="prescription-header">
               <ElRow :gutter="10" align="middle">
