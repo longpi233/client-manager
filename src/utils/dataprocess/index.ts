@@ -5,3 +5,4 @@
 export * from './array'
 export * from './format'
 export * from './medicalFormatter'
+export * from './pinyinSearch'

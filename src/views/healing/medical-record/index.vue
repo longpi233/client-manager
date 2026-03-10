@@ -220,10 +220,10 @@
                         :loading="healingItemsLoading"
                         placeholder="请输入项目名称"
                         class="full-width"
-                        @change="handleTreatmentItemChange"
+                        @change="handleTreatmentItemChange(index)"
                       >
                         <ElOption
-                          v-for="healingItem in filteredHealingItems"
+                          v-for="healingItem in getAvailableHealingItems(index)"
                           :key="healingItem.id"
                           :label="healingItem.name"
                           :value="healingItem.name"
@@ -378,6 +378,7 @@
     type TreatmentPrescriptionData
   } from '@/utils/print'
   import { formatAmountFromTenThousandths } from '@/utils/dataprocess/format'
+  import { filterByNamePinyin, mergeUniqueBy } from '@/utils/dataprocess'
 
   // 移除缺失的依赖项调用
   // const { initColors } = useTheme()
@@ -501,45 +502,72 @@
         size: 100,
         name: query
       })
+      const localMatched = filterByNamePinyin(healingItems.value, (item) => item.name, query)
+
       if (res.code === 200) {
         const records = res.data.records
-        // 关键修复：同时更新 filteredHealingItems 和 healingItems
-        // 确保搜索结果也被加入主列表，避免后续 getUnitPriceTenThousandths 查找失败
-        filteredHealingItems.value = records
-
         // 合并新搜索结果到主列表（避免重复）
-        records.forEach((newItem) => {
-          if (!healingItems.value.find((item) => item.id === newItem.id)) {
-            healingItems.value.push(newItem)
-          }
-        })
+        healingItems.value = mergeUniqueBy(
+          healingItems.value,
+          records,
+          (item) => `${item.id ?? item.name}`
+        )
+
+        // 合并 API 与本地拼音匹配结果
+        filteredHealingItems.value = mergeUniqueBy(
+          records,
+          localMatched,
+          (item) => `${item.id ?? item.name}`
+        )
 
         console.log('搜索治疗项目成功，共获得', records.length, '条记录')
       } else {
         console.error('搜索治疗项目API返回错误:', res.msg)
         ElMessage.warning(`搜索治疗项目失败: ${res.msg}`)
-        // 降级处理：本地过滤搜索
-        const filtered = healingItems.value.filter((item) =>
-          item.name.toLowerCase().includes(query.toLowerCase())
-        )
-        filteredHealingItems.value = filtered
+        // 降级处理：本地拼音过滤搜索
+        filteredHealingItems.value = localMatched
       }
     } catch (error) {
       console.error('搜索治疗项目请求失败:', error)
       ElMessage.error('搜索治疗项目请求失败，请检查网络连接')
-      // 本地过滤搜索作为备选
-      const filtered = healingItems.value.filter((item) =>
-        item.name.toLowerCase().includes(query.toLowerCase())
+      // 本地拼音过滤搜索作为备选
+      filteredHealingItems.value = filterByNamePinyin(
+        healingItems.value,
+        (item) => item.name,
+        query
       )
-      filteredHealingItems.value = filtered
     } finally {
       healingItemsLoading.value = false
     }
   }
 
   // 处理治疗项目变化
-  const handleTreatmentItemChange = () => {
+  const handleTreatmentItemChange = (changedIndex?: number) => {
+    if (typeof changedIndex === 'number') {
+      const selectedName = form.treatment[changedIndex]?.treatmentItem
+      if (selectedName) {
+        const duplicateIndex = form.treatment.findIndex(
+          (item, index) => index !== changedIndex && item.treatmentItem === selectedName
+        )
+
+        if (duplicateIndex !== -1) {
+          ElMessage.warning('该治疗项目已添加，请勿重复选择')
+          form.treatment[changedIndex].treatmentItem = ''
+        }
+      }
+    }
+
     calculateTotalPrice()
+  }
+
+  const getAvailableHealingItems = (currentIndex: number) => {
+    const selectedByOthers = new Set(
+      form.treatment
+        .map((item, index) => (index === currentIndex ? '' : item.treatmentItem))
+        .filter(Boolean)
+    )
+
+    return filteredHealingItems.value.filter((item) => !selectedByOthers.has(item.name))
   }
   // 获取单价（关键函数：务必确保能查找到价格）
   const getUnitPriceTenThousandths = (name: string): number => {

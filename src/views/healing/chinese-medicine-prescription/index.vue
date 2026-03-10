@@ -212,10 +212,10 @@
                         :loading="chineseMedicinesLoading"
                         placeholder="请输入中药名称"
                         class="full-width"
-                        @change="handleMedicineChange"
+                        @change="handleMedicineChange(index)"
                       >
                         <ElOption
-                          v-for="medicine in filteredChineseMedicines"
+                          v-for="medicine in getAvailableChineseMedicines(index)"
                           :key="medicine.id"
                           :label="medicine.name"
                           :value="medicine.name"
@@ -376,6 +376,7 @@
     formatAmountFromTenThousandths
     // convertTenThousandthsToYuan
   } from '@/utils/dataprocess/format'
+  import { filterByNamePinyin, mergeUniqueBy } from '@/utils/dataprocess'
 
   // 表单数据
   interface PrescriptionFormItem {
@@ -501,45 +502,72 @@
         size: 100,
         name: query
       })
+      const localMatched = filterByNamePinyin(chineseMedicines.value, (item) => item.name, query)
+
       if (res.code === 200) {
         const records = res.data.records
-        // 关键修复：同时更新 filteredChineseMedicines 和 chineseMedicines
-        // 确保搜索结果也被加入主列表，避免后续 getUnitPriceTenThousandths 查找失败
-        filteredChineseMedicines.value = records
-
         // 合并新搜索结果到主列表（避免重复）
-        records.forEach((newMedicine) => {
-          if (!chineseMedicines.value.find((m) => m.id === newMedicine.id)) {
-            chineseMedicines.value.push(newMedicine)
-          }
-        })
+        chineseMedicines.value = mergeUniqueBy(
+          chineseMedicines.value,
+          records,
+          (item) => `${item.id ?? item.name}`
+        )
+
+        // 合并 API 与本地拼音匹配结果
+        filteredChineseMedicines.value = mergeUniqueBy(
+          records,
+          localMatched,
+          (item) => `${item.id ?? item.name}`
+        )
 
         console.log('搜索中药成功，共获得', records.length, '条记录')
       } else {
         console.error('搜索中药API返回错误:', res.msg)
         ElMessage.warning(`搜索中药失败: ${res.msg}`)
-        // 降级处理：本地过滤搜索
-        const filtered = chineseMedicines.value.filter((item) =>
-          item.name.toLowerCase().includes(query.toLowerCase())
-        )
-        filteredChineseMedicines.value = filtered
+        // 降级处理：本地拼音过滤搜索
+        filteredChineseMedicines.value = localMatched
       }
     } catch (error) {
       console.error('搜索中药请求失败:', error)
       ElMessage.error('搜索中药请求失败，请检查网络连接')
-      // 本地过滤搜索作为备选
-      const filtered = chineseMedicines.value.filter((item) =>
-        item.name.toLowerCase().includes(query.toLowerCase())
+      // 本地拼音过滤搜索作为备选
+      filteredChineseMedicines.value = filterByNamePinyin(
+        chineseMedicines.value,
+        (item) => item.name,
+        query
       )
-      filteredChineseMedicines.value = filtered
     } finally {
       chineseMedicinesLoading.value = false
     }
   }
 
   // 处理中药变化
-  const handleMedicineChange = () => {
+  const handleMedicineChange = (changedIndex?: number) => {
+    if (typeof changedIndex === 'number') {
+      const selectedName = form.prescription[changedIndex]?.medicineName
+      if (selectedName) {
+        const duplicateIndex = form.prescription.findIndex(
+          (item, index) => index !== changedIndex && item.medicineName === selectedName
+        )
+
+        if (duplicateIndex !== -1) {
+          ElMessage.warning('该中药已添加，请勿重复选择')
+          form.prescription[changedIndex].medicineName = ''
+        }
+      }
+    }
+
     calculateTotalPrice()
+  }
+
+  const getAvailableChineseMedicines = (currentIndex: number) => {
+    const selectedByOthers = new Set(
+      form.prescription
+        .map((item, index) => (index === currentIndex ? '' : item.medicineName))
+        .filter(Boolean)
+    )
+
+    return filteredChineseMedicines.value.filter((item) => !selectedByOthers.has(item.name))
   }
 
   // 获取单价（关键函数：务必确保能查找到价格）
