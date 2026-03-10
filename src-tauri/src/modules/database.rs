@@ -71,7 +71,7 @@ impl DatabaseManager {
             [],
         )?;
 
-        // 统一医疗记录主表 (包含散客登记、门诊病历、中医中药的通用信息)
+        // 统一医疗记录主表 (包含散客登记、针灸理疗、中医中药的通用信息)
         conn.execute(
             "CREATE TABLE IF NOT EXISTS medical_records (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -90,7 +90,7 @@ impl DatabaseManager {
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL,
                 
-                -- 门诊病历特有字段
+                -- 针灸理疗特有字段
                 chief_complaint TEXT,
                 illness_history TEXT,
                 physical_examination TEXT,

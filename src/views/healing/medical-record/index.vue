@@ -333,7 +333,7 @@
               <ElButton type="primary" @click="submitRegistration" :loading="loading">
                 提交登记
               </ElButton>
-              <ElButton type="success" @click="printRecord" plain>生成门诊病历</ElButton>
+              <ElButton type="success" @click="printRecord" plain>生成针灸理疗</ElButton>
               <ElButton type="warning" @click="printFeeList" plain>生成费用清单</ElButton>
               <ElButton type="info" @click="printTreatmentPrescription" plain>
                 生成治疗处方单
@@ -677,7 +677,7 @@
       isSubmitting.value = true
       await formRef.value?.validate()
 
-      // 构建门诊病历数据 (统一API)
+      // 构建针灸理疗数据 (统一API)
       const medicalRecordData = {
         customer_name: form.customerName,
         gender: form.gender,
@@ -716,7 +716,7 @@
         doctor_name: doctorList.value.find((doctor) => doctor.id === parseInt(form.doctorId))?.name
       }
 
-      console.log('准备发送的门诊病历数据 (统一API):', medicalRecordData)
+      console.log('准备发送的针灸理疗数据 (统一API):', medicalRecordData)
 
       // 数据验证
       const hasPriceZero = medicalRecordData.treatment_items.some((item) => item.unit_price === 0)
@@ -734,19 +734,19 @@
         if (!confirmation) return
       }
 
-      // 调用后端API创建门诊病历 (统一API)
+      // 调用后端API创建针灸理疗 (统一API)
       const response = await createMedicalRecord(medicalRecordData)
 
       if (response.code === 200) {
-        ElMessage.success('门诊病历登记成功')
+        ElMessage.success('针灸理疗登记成功')
         // 不重置表单，保持当前数据
         // resetForm() // 注释掉重置操作
       } else {
-        ElMessage.error(response.msg || '门诊病历登记失败')
+        ElMessage.error(response.msg || '针灸理疗登记失败')
       }
     } catch (error) {
-      console.error('提交门诊病历登记失败:', error)
-      ElMessage.error('提交门诊病历登记失败')
+      console.error('提交针灸理疗登记失败:', error)
+      ElMessage.error('提交针灸理疗登记失败')
     } finally {
       loading.value = false
       // 延迟重置提交状态，防止快速重复点击
@@ -756,12 +756,12 @@
     }
   }
 
-  // 生成门诊病历（打印功能）
+  // 生成针灸理疗（打印功能）
   const printRecord = async () => {
     try {
       await formRef.value?.validate()
 
-      // 构建门诊病历打印数据
+      // 构建针灸理疗打印数据
       const printData: MedicalRecordData = {
         customer_name: form.customerName,
         gender: form.gender,
@@ -794,9 +794,9 @@
       }
 
       printMedicalRecordTemplate(printData)
-      ElMessage.success('门诊病历打印成功')
+      ElMessage.success('针灸理疗打印成功')
 
-      ElMessageBox.confirm('是否确认提交门诊病历登记？', '提交登记', {
+      ElMessageBox.confirm('是否确认提交针灸理疗登记？', '提交登记', {
         confirmButtonText: '确认',
         cancelButtonText: '取消',
         type: 'warning'
@@ -808,7 +808,7 @@
           // 用户取消提交
         })
     } catch (error) {
-      console.error('打印门诊病历失败:', error)
+      console.error('打印针灸理疗失败:', error)
       ElMessage.error('请先完善必填信息')
     }
   }
@@ -848,7 +848,7 @@
       printFeeListTemplate(printData)
       ElMessage.success('费用清单打印成功')
 
-      ElMessageBox.confirm('是否确认提交门诊病历登记？', '提交登记', {
+      ElMessageBox.confirm('是否确认提交针灸理疗登记？', '提交登记', {
         confirmButtonText: '确认',
         cancelButtonText: '取消',
         type: 'warning'
@@ -892,7 +892,7 @@
       printTreatmentPrescriptionTemplate(printData)
       ElMessage.success('治疗处方单打印成功')
 
-      ElMessageBox.confirm('是否确认提交门诊病历登记？', '提交登记', {
+      ElMessageBox.confirm('是否确认提交针灸理疗登记？', '提交登记', {
         confirmButtonText: '确认',
         cancelButtonText: '取消',
         type: 'warning'
@@ -1044,13 +1044,13 @@
 
   .form-actions {
     display: flex;
-    gap: 10px;
+    gap: 5px;
     align-items: center;
     justify-content: flex-end;
     padding-top: 20px;
 
     .el-button {
-      padding: 12px 30px;
+      padding: 12px;
       font-size: 16px;
     }
   }

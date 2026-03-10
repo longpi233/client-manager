@@ -1,6 +1,6 @@
 /**
  * 统一打印工具类
- * 支持门诊病历、费用清单、中医中药、治疗处方单的打印功能
+ * 支持针灸理疗、费用清单、中医中药、治疗处方单的打印功能
  */
 import type { UnifiedMedicalRecord, TreatmentItem, PrescriptionItem } from '@/types/medical'
 

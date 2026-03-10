@@ -1039,13 +1039,13 @@
 
   .form-actions {
     display: flex;
-    gap: 10px;
+    gap: 5px;
     align-items: center;
     justify-content: flex-end;
     padding-top: 20px;
 
     .el-button {
-      padding: 12px 30px;
+      padding: 12px;
       font-size: 16px;
     }
   }

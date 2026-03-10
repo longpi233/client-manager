@@ -25,9 +25,9 @@
       <template v-if="queryType === 'customer'">
         <ElButton type="info" disabled>散客登记暂不支持打印</ElButton>
       </template>
-      <!-- 门诊病历：支持打印病历、费用清单和治疗处方单 -->
+      <!-- 针灸理疗：支持打印病历、费用清单和治疗处方单 -->
       <template v-if="queryType === 'medical'">
-        <ElButton type="success" @click="handlePrintMedicalRecord">打印门诊病历</ElButton>
+        <ElButton type="success" @click="handlePrintMedicalRecord">打印针灸理疗</ElButton>
         <ElButton type="warning" @click="handlePrintMedicalFeeList">打印费用清单</ElButton>
         <ElButton type="primary" @click="handlePrintTreatmentPrescription">打印治疗处方单</ElButton>
       </template>
@@ -97,7 +97,7 @@
     visible.value = false
   }
 
-  // 打印门诊病历
+  // 打印针灸理疗
   const handlePrintMedicalRecord = async () => {
     if (!props.selectedItem) {
       ElMessage.warning('请先选择要打印的记录')
@@ -105,7 +105,7 @@
     }
 
     try {
-      // 构建门诊病历打印数据
+      // 构建针灸理疗打印数据
       const medicalData: MedicalRecordData = {
         customer_name: props.selectedItem.customer_name,
         gender: props.selectedItem.gender,
@@ -131,9 +131,9 @@
       }
 
       await printMedicalRecord(medicalData)
-      ElMessage.success('门诊病历打印成功')
+      ElMessage.success('针灸理疗打印成功')
     } catch (error) {
-      console.error('打印门诊病历失败:', error)
+      console.error('打印针灸理疗失败:', error)
       ElMessage.error('打印失败，请重试')
     }
   }

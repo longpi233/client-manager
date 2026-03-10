@@ -1,6 +1,6 @@
 /**
  * 门诊日志相关API
- * 统一获取散客登记、门诊病历、中医中药的汇总数据
+ * 统一获取散客登记、针灸理疗、中医中药的汇总数据
  */
 import {
   getUnifiedMedicalRecordList,

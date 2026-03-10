@@ -19,7 +19,7 @@ pub struct MedicalRecord {
     pub created_at: Option<String>,
     pub updated_at: Option<String>,
 
-    // 门诊病历特有字段
+    // 针灸理疗特有字段
     pub chief_complaint: Option<String>,
     pub illness_history: Option<String>,
     pub physical_examination: Option<String>,
@@ -32,7 +32,7 @@ pub struct MedicalRecord {
     pub single_dose_amount: Option<i64>, // 单付金额（以分为单位）
 
     // 关联数据
-    // 散客登记/门诊病历
+    // 散客登记/针灸理疗
     pub treatment_items: Option<Vec<TreatmentItemRecord>>,
     // 中医中药
     pub prescription_items: Option<Vec<PrescriptionItemRecord>>,

@@ -1,6 +1,6 @@
 /**
  * 统一医疗记录数据结构
- * 适用于散客登记、门诊病历、中医中药等所有医疗记录类型
+ * 适用于散客登记、针灸理疗、中医中药等所有医疗记录类型
  */
 
 /**
@@ -62,7 +62,7 @@ export const TRADE_TYPE_OPTIONS = [
  */
 export const RECORD_TYPE_OPTIONS = [
   { label: '散客登记', value: 'customer' },
-  { label: '门诊病历', value: 'medical' },
+  { label: '针灸理疗', value: 'medical' },
   { label: '中医中药', value: 'prescription' }
 ] as const
 
@@ -88,7 +88,7 @@ export const TRADE_TYPE_LABEL_MAP = {
  */
 export const RECORD_TYPE_LABEL_MAP = {
   customer: '散客登记',
-  medical: '门诊病历',
+  medical: '针灸理疗',
   prescription: '中医中药'
 } as const
 
@@ -190,7 +190,7 @@ export interface UnifiedMedicalRecord {
   /** 更新时间 */
   updated_at?: string
 
-  /** ===== 门诊病历特有字段 ===== */
+  /** ===== 针灸理疗特有字段 ===== */
   /** 主诉 */
   chief_complaint?: string
   /** 现病史 */
@@ -249,17 +249,17 @@ export interface UnifiedMedicalRecordSearchParams {
   doctor_id?: number
   /** 医师姓名 */
   doctor_name?: string
-  /** 主诉（门诊病历） */
+  /** 主诉（针灸理疗） */
   chief_complaint?: string
-  /** 病史（门诊病历） */
+  /** 病史（针灸理疗） */
   illness_history?: string
-  /** 体格检查（门诊病历） */
+  /** 体格检查（针灸理疗） */
   physical_examination?: string
-  /** 既往史（门诊病历） */
+  /** 既往史（针灸理疗） */
   past_history?: string
-  /** 实验室检查（门诊病历） */
+  /** 实验室检查（针灸理疗） */
   laboratory_examination?: string
-  /** 治疗方法（门诊病历） */
+  /** 治疗方法（针灸理疗） */
   treatment_method?: string
   /** 付数（中医中药） */
   doses?: number

@@ -24,7 +24,7 @@ export {
   printDocument
 } from './printUtils'
 
-// 导出门诊病历打印
+// 导出针灸理疗打印
 export { generateMedicalRecordHTML, printMedicalRecord } from './medicalRecordPrint'
 
 // 导出费用清单打印

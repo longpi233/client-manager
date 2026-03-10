@@ -3,7 +3,7 @@
     <!-- 页面标题 -->
     <div class="page-header">
       <h2>数据查询</h2>
-      <p>查询患者散客登记、门诊病历、中医中药信息</p>
+      <p>查询患者散客登记、针灸理疗、中医中药信息</p>
     </div>
 
     <!-- 查询类型选择 -->
@@ -20,7 +20,7 @@
         </ElRadio>
         <ElRadio value="medical">
           <ElIcon><Document /></ElIcon>
-          门诊病历
+          针灸理疗
         </ElRadio>
         <ElRadio value="prescription">
           <ElIcon><Document /></ElIcon>
@@ -249,7 +249,7 @@
         </ElTable>
       </div>
 
-      <!-- 门诊病历结果表格 -->
+      <!-- 针灸理疗结果表格 -->
       <div v-if="queryType === 'medical'">
         <ElTable
           :data="tableData"
@@ -495,7 +495,7 @@
   const generateDataInquiryExportFilename = (): string => {
     const queryTypeNames = {
       customer: '散客登记',
-      medical: '门诊病历',
+      medical: '针灸理疗',
       prescription: '中医中药'
     }
 
@@ -611,7 +611,7 @@
   const handleExportSuccess = (filename: string, rowCount: number) => {
     const queryTypeNames = {
       customer: '散客登记',
-      medical: '门诊病历',
+      medical: '针灸理疗',
       prescription: '中医中药'
     }
     ElMessage.success(

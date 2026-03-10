@@ -1,5 +1,5 @@
 /**
- * 门诊病历打印模板
+ * 针灸理疗打印模板
  */
 import {
   type MedicalRecordData,
@@ -11,7 +11,7 @@ import {
 } from './printUtils'
 
 /**
- * 生成门诊病历打印内容
+ * 生成针灸理疗打印内容
  */
 export const generateMedicalRecordHTML = async (data: MedicalRecordData): Promise<string> => {
   const institution = await getInstitutionInfo()
@@ -46,7 +46,7 @@ export const generateMedicalRecordHTML = async (data: MedicalRecordData): Promis
   return `
     <div class="print-header">
       <h1>${institution.name}</h1>
-      <h2>门诊病历</h2>
+      <h2>针灸理疗</h2>
     </div>
 
     <div class="form-content">
@@ -117,7 +117,7 @@ export const generateMedicalRecordHTML = async (data: MedicalRecordData): Promis
 }
 
 /**
- * 打印门诊病历
+ * 打印针灸理疗
  */
 export const printMedicalRecord = async (
   data: MedicalRecordData,
@@ -125,14 +125,14 @@ export const printMedicalRecord = async (
 ): Promise<void> => {
   try {
     const htmlContent = await generateMedicalRecordHTML(data)
-    const filename = `门诊病历-${data.customer_name}-${formatDateTime(data.time_of_visit).split(' ')[0]}`
-    printDocument(htmlContent, `门诊病历-${data.customer_name}`, {
+    const filename = `针灸理疗-${data.customer_name}-${formatDateTime(data.time_of_visit).split(' ')[0]}`
+    printDocument(htmlContent, `针灸理疗-${data.customer_name}`, {
       showPdfOption: true,
       filename,
       ...options
     })
   } catch (error) {
-    console.error('打印门诊病历失败:', error)
+    console.error('打印针灸理疗失败:', error)
     throw error
   }
 }

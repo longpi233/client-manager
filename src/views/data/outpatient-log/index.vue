@@ -3,7 +3,7 @@
     <!-- 页面标题 -->
     <div class="page-header">
       <h2>门诊日志</h2>
-      <p>查看指定月份的门诊日志，包含散客登记、门诊病历、中医中药等综合信息</p>
+      <p>查看指定月份的门诊日志，包含散客登记、针灸理疗、中医中药等综合信息</p>
     </div>
 
     <!-- 查询条件 -->
@@ -282,7 +282,7 @@
         <ElCol :span="6">
           <div class="stat-item">
             <div class="stat-value">{{ statistics.medicalCount }}</div>
-            <div class="stat-label">门诊病历</div>
+            <div class="stat-label">针灸理疗</div>
           </div>
         </ElCol>
         <ElCol :span="6">
@@ -358,7 +358,7 @@
               :show-area="true"
               :show-label="true"
               label-position="top"
-              label-formatter="(params) => '¥' + Number(params.value || 0).toLocaleString() + '元'"
+              label-formatter="(params) => Number(params.value || 0).toLocaleString() + '元'"
             />
           </div>
         </ElCol>
@@ -574,7 +574,7 @@
 
     return [
       { name: '散客登记', value: convertToYuan(customerAmount) },
-      { name: '门诊病历', value: convertToYuan(medicalAmount) },
+      { name: '针灸理疗', value: convertToYuan(medicalAmount) },
       { name: '中医中药', value: convertToYuan(prescriptionAmount) }
     ].filter((item) => item.value > 0)
   })
