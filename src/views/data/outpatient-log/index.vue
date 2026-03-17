@@ -165,7 +165,7 @@
           <div class="result-info">
             <ElTag v-if="loading" type="warning">查询中...</ElTag>
             <ElTag v-else-if="hasError" type="danger">查询失败</ElTag>
-            <ElTag v-else type="success">找到 {{ tableData.length }} 条记录</ElTag>
+            <ElTag v-else type="success">找到 {{ totalCount }} 条记录</ElTag>
           </div>
         </div>
       </template>
@@ -758,14 +758,16 @@
         throw new Error('无效的查询类型')
       }
 
-      // 设置获取所有数据的参数
-      searchParams.current = 1
-      searchParams.size = 20
+      const fullSearchParams: UnifiedMedicalRecordSearchParams = {
+        ...searchParams,
+        current: 1,
+        size: 10000000
+      }
 
-      console.log('门诊日志查询参数:', searchParams)
+      console.log('门诊日志查询参数:', fullSearchParams)
 
       // 使用统一的门诊日志API
-      const response = await getOutpatientLogList(searchParams)
+      const response = await getOutpatientLogList(fullSearchParams)
 
       console.log('门诊日志API响应:', response)
 
