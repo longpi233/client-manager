@@ -11,7 +11,7 @@ import {
 } from './printUtils'
 
 /**
- * 生成针灸理疗打印内容
+ * 生成门诊病历打印内容
  */
 export const generateMedicalRecordHTML = async (data: MedicalRecordData): Promise<string> => {
   const institution = await getInstitutionInfo()
@@ -117,7 +117,7 @@ export const generateMedicalRecordHTML = async (data: MedicalRecordData): Promis
 }
 
 /**
- * 打印针灸理疗
+ * 打印门诊病历
  */
 export const printMedicalRecord = async (
   data: MedicalRecordData,
@@ -132,7 +132,7 @@ export const printMedicalRecord = async (
       ...options
     })
   } catch (error) {
-    console.error('打印针灸理疗失败:', error)
+    console.error('打印门诊病历失败:', error)
     throw error
   }
 }

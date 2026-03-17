@@ -333,7 +333,7 @@
               <ElButton type="primary" @click="submitRegistration" :loading="loading">
                 提交登记
               </ElButton>
-              <ElButton type="success" @click="printRecord" plain>生成针灸理疗</ElButton>
+              <ElButton type="success" @click="printRecord" plain>生成门诊病历</ElButton>
               <ElButton type="warning" @click="printFeeList" plain>生成费用清单</ElButton>
               <ElButton type="info" @click="printTreatmentPrescription" plain>
                 生成治疗处方单
@@ -756,7 +756,7 @@
     }
   }
 
-  // 生成针灸理疗（打印功能）
+  // 生成门诊病历（打印功能）
   const printRecord = async () => {
     try {
       await formRef.value?.validate()
@@ -808,7 +808,7 @@
           // 用户取消提交
         })
     } catch (error) {
-      console.error('打印针灸理疗失败:', error)
+      console.error('打印门诊病历失败:', error)
       ElMessage.error('请先完善必填信息')
     }
   }

@@ -12,7 +12,7 @@ import {
 } from './printUtils'
 
 /**
- * 生成中医中药打印内容
+ * 生成中药处方打印内容
  */
 export const generatePrescriptionHTML = async (data: PrescriptionData): Promise<string> => {
   const institution = await getInstitutionInfo()
@@ -108,7 +108,7 @@ export const generatePrescriptionHTML = async (data: PrescriptionData): Promise<
 }
 
 /**
- * 打印中医中药
+ * 打印中药处方
  */
 export const printPrescription = async (
   data: PrescriptionData,
@@ -123,7 +123,7 @@ export const printPrescription = async (
       ...options
     })
   } catch (error) {
-    console.error('打印中医中药失败:', error)
+    console.error('打印中药处方失败:', error)
     throw error
   }
 }

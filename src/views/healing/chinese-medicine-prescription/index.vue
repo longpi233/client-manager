@@ -332,7 +332,7 @@
               <ElButton type="warning" @click="printChineseMedicalRecord" plain>
                 生成中医病历
               </ElButton>
-              <ElButton type="success" @click="printPrescription" plain> 生成中医中药 </ElButton>
+              <ElButton type="success" @click="printPrescription" plain> 生成中药处方 </ElButton>
               <!-- <ElButton type="warning" @click="printFeeList" plain> 生成费用清单 </ElButton> -->
             </div>
           </ElCol>
@@ -770,7 +770,7 @@
     }
   }
 
-  // 生成中医中药（打印功能）
+  // 生成中药处方（打印功能）
   const printPrescription = async () => {
     try {
       await formRef.value?.validate()
@@ -819,7 +819,7 @@
           // 用户取消提交
         })
     } catch (error) {
-      console.error('打印中医中药失败:', error)
+      console.error('打印中药处方失败:', error)
       ElMessage.error('请先完善必填信息')
     }
   }
