@@ -173,7 +173,10 @@ impl DatabaseManager {
                 .unwrap_or(false);
 
             if !already_applied {
-                println!("Applying migration {}: {}", migration.version, migration.name);
+                println!(
+                    "Applying migration {}: {}",
+                    migration.version, migration.name
+                );
                 conn.execute_batch(migration.sql)?;
 
                 let now = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();

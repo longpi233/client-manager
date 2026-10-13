@@ -64,9 +64,14 @@ pub async fn create_unified_medical_record(
         return Err("诊断信息不能为空".to_string());
     }
 
-    println!("开始原子事务插入医疗记录与明细，患者: {}", params.customer_name);
+    println!(
+        "开始原子事务插入医疗记录与明细，患者: {}",
+        params.customer_name
+    );
 
-    let tx = conn.transaction().map_err(|e| format!("开启事务失败: {}", e))?;
+    let tx = conn
+        .transaction()
+        .map_err(|e| format!("开启事务失败: {}", e))?;
 
     // 插入主记录
     let insert_result = tx.execute(
@@ -466,7 +471,7 @@ fn load_treatment_items(
         "SELECT id, medical_record_id, treatment_item, count, unit_price, total_price, created_at 
          FROM medical_treatment_items 
          WHERE medical_record_id = ? 
-         ORDER BY id"
+         ORDER BY id",
     )?;
 
     let items: Result<Vec<TreatmentItemRecord>, _> = stmt

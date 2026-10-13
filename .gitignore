@@ -32,3 +32,6 @@ src-tauri/gen/schemas/
 *.sqlite
 *.sqlite3
 backups/
+
+# Local release packages and build reports
+/artifacts/

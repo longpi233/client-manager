@@ -1,4 +1,4 @@
-# 维康诊所管理系统 (Health Clinic Management System)
+# 维康诊所管理系统
 
 <p align="center">
   <img src="./src-tauri/icons/128x128.png" alt="Logo" width="96" height="96" />
@@ -9,190 +9,149 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Tauri-v2.0-24C8DB?logo=tauri&logoColor=white" alt="Tauri 2.0" />
-  <img src="https://img.shields.io/badge/Rust-2021_Edition-dea584?logo=rust&logoColor=white" alt="Rust" />
-  <img src="https://img.shields.io/badge/Vue-v3.5-4FC08D?logo=vuedotjs&logoColor=white" alt="Vue 3" />
-  <img src="https://img.shields.io/badge/TypeScript-v5.6-3178C6?logo=typescript&logoColor=white" alt="TypeScript" />
-  <img src="https://img.shields.io/badge/Vite-v6.1-646CFF?logo=vite&logoColor=white" alt="Vite" />
-  <img src="https://img.shields.io/badge/Element_Plus-v2.10-409EFF?logo=elementplus&logoColor=white" alt="Element Plus" />
-  <img src="https://img.shields.io/badge/SQLite-WAL_Mode-003B57?logo=sqlite&logoColor=white" alt="SQLite" />
+  <a href="https://tauri.app/"><img src="https://img.shields.io/badge/Tauri-2-24C8DB?logo=tauri&amp;logoColor=white" alt="Tauri 官网" /></a>
+  <a href="https://www.rust-lang.org/"><img src="https://img.shields.io/badge/Rust-DEA584?logo=rust&amp;logoColor=white" alt="Rust 官网" /></a>
+  <a href="https://vuejs.org/"><img src="https://img.shields.io/badge/Vue-3-4FC08D?logo=vuedotjs&amp;logoColor=white" alt="Vue 官网" /></a>
+  <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&amp;logoColor=white" alt="TypeScript 官网" /></a>
+  <a href="https://vite.dev/"><img src="https://img.shields.io/badge/Vite-646CFF?logo=vite&amp;logoColor=white" alt="Vite 官网" /></a>
+  <a href="https://element-plus.org/"><img src="https://img.shields.io/badge/Element_Plus-409EFF?logo=elementplus&amp;logoColor=white" alt="Element Plus 官网" /></a>
+  <a href="https://www.sqlite.org/"><img src="https://img.shields.io/badge/SQLite-003B57?logo=sqlite&amp;logoColor=white" alt="SQLite 官网" /></a>
 </p>
 
 ---
 
-## 📖 项目简介
+Client Manager 是一个用于记录诊所日常就诊、针灸理疗和中药处方的桌面应用，使用 Vue 3、TypeScript、Tauri 2 和 SQLite 开发。
 
-**维康诊所管理系统** 是一款专为小型医疗机构、中医诊所、理疗康复中心量身定制的高性能桌面管理软件。
+业务数据保存在本机，支持记录查询、门诊统计、打印和备份。项目以单机使用为主，不包含独立的后端服务或多端数据同步服务。
 
-系统采用 **Tauri 2.0 + Rust + SQLite** 原生后端驱动，结合 **Vue 3 + TypeScript + Element Plus** 现代化前端技术栈，具备启动秒开、极低内存占用、单机脱网可用、数据高度安全等特性。
+## 功能
 
-系统覆盖从患者就诊登记、针灸理疗、中医开方，到费用核算、处方打印、门诊日志与统计分析的全业务流程，帮助医护人员提升门诊工作效率。
+- **就诊登记**：记录患者信息、就诊时间、治疗项目、费用和结算类型。
+- **针灸理疗**：录入病历和治疗方案，选择理疗项目，生成病历、治疗处方及费用清单。
+- **中药处方**：按名称或拼音检索饮片，录入用量、单价和付数，计算费用并打印处方。
+- **查询与统计**：按条件查询就诊记录，按日、月、年或自定义日期范围查看门诊日志，导出 Excel 表格。
+- **基础信息维护**：管理机构信息、医师、中药饮片和理疗项目。
+- **数据管理**：创建和恢复数据库备份，查看数据统计，压缩数据库，导入、导出 JSON 数据。
 
----
+## 本地开发
 
-## ✨ 核心功能特性
+### 环境要求
 
-### 1. 🏥 门诊就诊与病历全流程管理
+- Node.js 22.x 或 24.x
+- pnpm
+- Rust stable 工具链
+- 对应操作系统的 Tauri 2 构建依赖；Windows 需要 Visual Studio C++ 构建工具和 Microsoft Edge WebView2 Runtime
 
-- **散客登记**：支持日常门诊散客快速建档、就诊登记与费用记录。
-- **针灸理疗病历**：规范化录入主诉、现病史、体格检查、既往史、理疗方案，并支持动态添加/组合理疗项目（如电针、艾灸、拔罐、推拿等）。
-- **中医中药处方**：
-  - **智能饮片开方**：支持输入克重、单价、付数，自动精确核算总金额；
-  - **拼音极速检索**：集成 `pinyin-pro`，支持汉字全拼与首字母模糊匹配（如输入 `ds` 快速联想 `党参`）；
-  - **处方模板与历史快速调取**。
-
-### 2. 📊 门诊日志与多维统计分析
-
-- **就诊日志大盘**：按日、按月、按年或自定义时间跨度检索门诊历史记录；
-- **分类统计图表**：使用 ECharts 可视化展现就诊人次、结算类型构成（现金/省直医保/武汉医保）及就诊类型分布；
-- **数据报表导出**：支持门诊台账一键导出为标准 Excel (`.xlsx`) 表格，便于对账及报税。
-
-### 3. 🖨️ 统一打印引擎
-
-- **处方与病历打印**：内置符合医疗规范的 A4 / A5 处方笺排版样式；
-- **费用明细清单**：一键生成就诊收费凭证与理疗明细单；
-- **即时打印预览**：提供 `PrintPreviewModal` 弹窗预览，支持自定义页边距与不同打印机适配。
-
-### 4. 🗄️ 基础数据与机构管理
-
-- **中药饮片库**：维护中药名称、单价、功效说明及拼音助记码；
-- **理疗项目库**：维护康养与治疗服务项目及其定价；
-- **机构与医师配置**：配置诊所名称、科室设置、执业医师列表及联系方式。
-
-### 5. 🛡️ 本地数据安全与容灾备份
-
-- **SQLite WAL 高性能存储**：采用预写日志模式（WAL），读写互不阻塞，抗异常断电损坏能力强；
-- **原生热备份/恢复**：利用 SQLite 官方 Backup API，运行期间即可秒级生成无锁快照备份；
-- **全量 JSON 导出/导入**：支持跨机器迁移与冷数据归档。
-
----
-
-## 🛠️ 系统架构与设计亮点
-
-```text
-维康诊所管理系统 (Client Manager)
-├── 前端界面层 (Vue 3 + Element Plus + Pinia)
-│   ├── 业务视图 (散客登记 / 针灸理疗 / 中药处方 / 数据查询 / 门诊日志)
-│   ├── 共通组件 (处方打印预览 / 拼音快速联想 / 数据详情卡片)
-│   └── 适配交互层 (Tauri Invoke API 封装)
-├── 原生客户端层 (Tauri 2.0 IPC)
-│   └── 高性能命令调度通道 (Type-safe IPC Command Handlers)
-└── 本地原生服务层 (Rust + SQLite)
-    ├── 统一医疗记录核心 (medical_record.rs - 聚合三合一模型与原子事务)
-    ├── 饮片与项目管理 (chinese_medicine.rs / healing_items.rs)
-    ├── 版本化迁移引擎 (database.rs - 自动化表结构版本维护)
-    └── 热备份与管理 (data_management.rs - 原生热备份与无损恢复)
-```
-
-1. **统一数据模型 (Unified Medical Record)**：将散客挂号 (`customer`)、针灸理疗 (`medical`)、中药处方 (`prescription`) 统一收敛为单一主模型，大幅简化了跨业务的综合查询、门诊台账统计与数据导出。
-2. **高可靠事务管理**：Rust 后端在保存含从表（理疗明细、中药配方明细）的复杂业务记录时，全流程基于数据库原生原子事务执行，确保断电或异常时数据不发生脏写与残留。
-3. **数据库平滑演进与自动迁移**：内置轻量级版本化迁移机制（基于 `schema_version`），无需人工改动本地数据库即可平滑追加表与字段。
-
----
-
-## 📂 目录结构
-
-```text
-client-manager/
-├── src/                               # 前端源码
-│   ├── api/                           # Tauri invoke 接口封装 (统一医疗记录、机构、中药等)
-│   ├── assets/                        # 静态资源与样式表
-│   ├── components/                    # 通用业务组件 (打印预览、查询详情等)
-│   ├── composables/                   # 组合式函数 (医师列表 useDoctorList 等)
-│   ├── constants/                     # 业务字典常量 (性别、医保结算类型、万分位转换)
-│   ├── router/                        # 路由配置
-│   ├── store/                         # Pinia 状态管理
-│   ├── types/                         # TypeScript 接口与模型类型定义
-│   ├── utils/                         # 打印引擎、拼音搜索、数据转换工具
-│   └── views/                         # 页面视图 (就诊登记/理疗/中药/日志/机构/数据管理)
-├── src-tauri/                         # Tauri 桌面客户端 & Rust 原生源码
-│   ├── src/
-│   │   ├── modules/
-│   │   │   ├── chinese_medicine.rs    # 中药饮片管理模块
-│   │   │   ├── data_management.rs     # 数据库热备份/恢复/导入导出
-│   │   │   ├── database.rs            # SQLite 连接池、WAL 配置与版本化迁移
-│   │   │   ├── healing_items.rs       # 康养理疗项目管理模块
-│   │   │   ├── institution.rs         # 诊所机构与医师信息模块
-│   │   │   ├── medical_record.rs      # 统一医疗记录 CRUD 与事务处理
-│   │   │   ├── types.rs               # Rust 核心结构体定义
-│   │   │   └── utils.rs               # 辅助工具函数
-│   │   ├── lib.rs                     # Tauri Handler 注册与应用初始化
-│   │   └── main.rs                    # 桌面应用入口
-│   ├── tauri.conf.json                # Tauri 2.0 配置文件
-│   └── Cargo.toml                     # Rust 依赖清单
-├── package.json                       # 前端依赖配置
-├── pnpm-workspace.yaml                # pnpm 依赖构建脚本授权配置
-├── vite.config.ts                     # Vite 构建配置
-└── README.md                          # 本说明文档
-```
-
----
-
-## 🚀 环境准备与快速上手
-
-### 1. 前置依赖
-
-在开始前，请确保您的开发机上已安装以下工具链：
-
-- **Node.js**：`>= 18.0.0` (推荐 LTS 版本)
-- **包管理器**：`pnpm` (`>= 9.0.0`)
-- **Rust 工具链**：`rustc >= 1.77.0`, `cargo` (可通过 [rustup.rs](https://rustup.rs/) 安装)
-- **C++ 构建工具**：
-  - Windows: 安装 Visual Studio 2022 (勾选 “使用 C++ 的桌面开发”)
-  - macOS: 安装 Xcode Command Line Tools (`xcode-select --install`)
-  - Linux: 安装 `build-essential`, `libwebkit2gtk-4.1-dev` 等 Tauri 依赖
-
-### 2. 克隆项目与安装依赖
+### 安装依赖
 
 ```bash
-# 克隆仓库
 git clone https://github.com/longpi233/client-manager.git
 cd client-manager
-
-# 安装前端依赖
 pnpm install
 ```
 
-### 3. 本地开发与调试
+### 启动桌面应用
 
-运行以下命令，会自动拉起 Vite 前端开发服务器并编译启动 Tauri 桌面窗口：
-
-```bash
-cargo tauri dev
-```
-
-> **提示**：若仅需单独调试前端界面，亦可直接执行 `pnpm dev`（在浏览器中访问 `http://localhost:3006`，部分依赖原生 SQLite 的接口需要桌面容器支持）。
-
-### 4. 生产构建打包
+在项目根目录执行：
 
 ```bash
-# 编译并生成桌面客户端安装包 (Windows: .msi/.exe; macOS: .dmg/.app)
-cargo tauri build
+pnpm exec tauri dev
 ```
 
-编译产物将输出在 `src-tauri/target/release/bundle/` 目录下。
+Tauri 会自动启动 Vite 开发服务器并编译桌面应用。首次运行需要下载和编译 Rust 依赖，耗时取决于网络和本机环境。
 
----
+项目的前端依赖中已包含 Tauri CLI，无需单独安装。若本机已安装 Tauri 2 的 Cargo CLI，也可以使用 `cargo tauri dev`。
 
-## ❓ 常见问题排查 (FAQ)
+### 仅调试前端
 
-### Q1: 运行 cargo tauri dev 提示 windowClassname was unexpected？
+```bash
+pnpm dev
+```
 
-- **原因**：Tauri 2.0 CLI 配置校验较 1.x 更加严格，去除了已废弃的非标准窗口属性。
-- **解决**：确保 `src-tauri/tauri.conf.json` 中的窗口配置遵循 Tauri 2.0 规范，移除冗余字段。
+开发服务器默认地址为 `http://localhost:3006`。浏览器模式适合调试页面和样式；数据库、备份等功能需要在 Tauri 桌面窗口中使用。
 
-### Q2: pnpm 提示 [ERR_PNPM_IGNORED_BUILDS] 并报错退出？
+## 构建
 
-- **原因**：pnpm 11+ 对依赖中包含的构建脚本（如 `esbuild`、`@parcel/watcher` 等）默认开启了拦截保护。
-- **解决**：在项目根目录的 `pnpm-workspace.yaml` 中配置 `allowBuilds` 为 `true` 即可授权执行。
+生成桌面应用和安装包：
 
-### Q3: 本地提示 husky: Permission denied 无法执行？
+```bash
+pnpm exec tauri build
+```
 
-- **原因**：部分环境限制了对 `.git/config` 的写锁权限。
-- **解决**：`package.json` 中的 `"prepare"` 脚本已预置 `"husky || true"` 容错处理，不影响项目的正常安装与编译。
+该命令会先执行前端类型检查和构建，再编译 Rust 程序。安装包默认输出到 `src-tauri/target/release/bundle/`，格式取决于构建平台。
 
----
+仅构建前端：
 
-## 📄 开源许可
+```bash
+pnpm build
+```
 
-本项目遵循 [MIT License](./LICENSE) 开源协议。欢迎提交 Issue 与 Pull Request 共同改进！
+前端产物位于 `dist/`。它是桌面应用的界面资源，不是可以独立使用数据库功能的 Web 服务。
+
+在 Windows x64 上，可使用 PowerShell 7 一次生成 EXE 安装包、MSI 安装包和免安装 ZIP：
+
+```powershell
+pwsh -NoProfile -File scripts/build-release.ps1
+```
+
+发布文件、SHA-256 校验和及构建日志会保存在 `artifacts/release-<版本>/`。该目录不会提交到 Git；打包脚本不执行安装、签名或 GitHub 上传。免安装 ZIP 需完整解压，并安装 Microsoft Edge WebView2 Runtime 后运行其中的 EXE；请保留随包附带的许可证。生成的安装包未签名，发布前请在干净的 Windows 环境验证安装、启动和卸载。
+
+## 数据与备份
+
+数据库文件名为 `health_clinic.db`，首次启动时自动创建在系统的应用数据目录中，不存放在项目仓库内。可通过应用的「数据管理」页面打开数据库文件所在位置和备份目录。
+
+- 需要完整备份或迁移时，使用数据库备份功能，并将备份复制到另一块磁盘或其他安全位置。
+- 恢复备份会覆盖当前数据库；导入 JSON 也可能替换已有记录。操作前请先创建备份，并在操作后核对数据。
+- 数据库、备份和导出文件没有加密。涉及患者信息时，请自行限制文件访问权限，不要将真实数据上传到公开仓库或 Issue。
+
+## 项目结构
+
+前端通过 Tauri 的 `invoke` 接口调用 Rust 业务模块，Rust 负责 SQLite 数据读写和文件操作。
+
+```text
+client-manager/
+├── src/
+│   ├── api/                 # Tauri 命令调用封装
+│   ├── components/          # 通用组件和业务组件
+│   ├── router/              # 路由与菜单
+│   ├── store/               # 前端状态管理
+│   ├── types/               # TypeScript 类型
+│   ├── utils/               # 打印、拼音检索等工具
+│   └── views/               # 业务页面
+├── src-tauri/
+│   ├── src/modules/         # 数据库、就诊记录、基础信息及备份模块
+│   ├── src/lib.rs           # 应用初始化与命令注册
+│   ├── Cargo.toml           # Rust 依赖
+│   └── tauri.conf.json      # 桌面应用与打包配置
+├── package.json             # 前端依赖与开发脚本
+├── pnpm-lock.yaml           # 前端依赖锁文件
+└── vite.config.ts           # 前端构建配置
+```
+
+## 参与贡献
+
+欢迎通过 [Issue](https://github.com/longpi233/client-manager/issues) 报告问题或提出建议，也欢迎提交 Pull Request。
+
+报告问题时，请附上操作系统、应用版本、复现步骤和相关日志。截图、日志及示例数据请先脱敏。
+
+提交修改前，可按涉及的代码运行检查：
+
+```bash
+# 前端类型检查与代码检查
+pnpm exec vue-tsc --noEmit
+pnpm exec eslint src
+
+# Rust 格式与编译检查
+cargo fmt --manifest-path src-tauri/Cargo.toml --check
+cargo check --manifest-path src-tauri/Cargo.toml --locked
+```
+
+请在 Pull Request 中说明修改目的和验证方式；涉及数据库结构或导入、恢复逻辑的变更，应说明对现有数据的影响。
+
+## 致谢
+
+前端界面基于 [Art Design Pro](https://gitee.com/lingchen163/art-design-pro) 开发，感谢原项目及其贡献者。
+
+## 许可证
+
+本项目采用 [MIT License](./LICENSE)。
