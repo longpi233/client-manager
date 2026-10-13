@@ -150,7 +150,7 @@ cargo check --manifest-path src-tauri/Cargo.toml --locked
 
 ## 致谢
 
-前端界面基于 [Art Design Pro](https://gitee.com/lingchen163/art-design-pro) 开发，感谢原项目及其贡献者。
+前端界面基于 [Art Design Pro](https://github.com/Daymychen/art-design-pro) 开发，感谢原项目及其贡献者。
 
 ## 许可证
 
