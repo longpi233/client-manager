@@ -590,7 +590,13 @@ export const printDocument = (
 
   // 使用 iframe 方法替代 window.open，避免被弹窗拦截
   const iframe = document.createElement('iframe')
-  iframe.style.display = 'none'
+  iframe.style.position = 'fixed'
+  iframe.style.right = '0'
+  iframe.style.bottom = '0'
+  iframe.style.width = '0'
+  iframe.style.height = '0'
+  iframe.style.border = '0'
+  iframe.style.opacity = '0'
   document.body.appendChild(iframe)
 
   try {

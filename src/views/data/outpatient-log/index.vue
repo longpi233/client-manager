@@ -15,8 +15,8 @@
       </template>
 
       <div class="search-form">
-        <ElRow :gutter="20">
-          <ElCol :span="6">
+        <ElRow :gutter="16">
+          <ElCol :xs="24" :sm="12" :md="12" :lg="6">
             <ElFormItem label="查询类型">
               <ElSelect
                 v-model="queryConfig.queryType"
@@ -30,7 +30,7 @@
               </ElSelect>
             </ElFormItem>
           </ElCol>
-          <ElCol :span="6">
+          <ElCol :xs="24" :sm="12" :md="12" :lg="6">
             <ElFormItem v-if="queryConfig.queryType === 'month'" label="查询月份">
               <ElDatePicker
                 v-model="queryConfig.month"
@@ -67,7 +67,7 @@
               />
             </ElFormItem>
           </ElCol>
-          <ElCol :span="6">
+          <ElCol :xs="24" :sm="12" :md="12" :lg="6">
             <ElFormItem label="数据类型">
               <ElSelect
                 v-model="searchParams.data_type"
@@ -86,7 +86,7 @@
               </ElSelect>
             </ElFormItem>
           </ElCol>
-          <ElCol :span="6">
+          <ElCol :xs="24" :sm="12" :md="12" :lg="6">
             <ElFormItem label="结算类型">
               <ElSelect
                 v-model="searchParams.trade_type"
@@ -267,25 +267,25 @@
       </template>
 
       <ElRow :gutter="24">
-        <ElCol :span="6">
+        <ElCol :xs="12" :sm="12" :md="6" :lg="6">
           <div class="stat-item">
             <div class="stat-value">{{ statistics.total }}</div>
             <div class="stat-label">总记录数</div>
           </div>
         </ElCol>
-        <ElCol :span="6">
+        <ElCol :xs="12" :sm="12" :md="6" :lg="6">
           <div class="stat-item">
             <div class="stat-value">{{ statistics.customerCount }}</div>
             <div class="stat-label">散客登记</div>
           </div>
         </ElCol>
-        <ElCol :span="6">
+        <ElCol :xs="12" :sm="12" :md="6" :lg="6">
           <div class="stat-item">
             <div class="stat-value">{{ statistics.medicalCount }}</div>
             <div class="stat-label">针灸理疗</div>
           </div>
         </ElCol>
-        <ElCol :span="6">
+        <ElCol :xs="12" :sm="12" :md="6" :lg="6">
           <div class="stat-item">
             <div class="stat-value">{{ statistics.prescriptionCount }}</div>
             <div class="stat-label">中医中药</div>
@@ -293,7 +293,7 @@
         </ElCol>
       </ElRow>
       <ElRow :gutter="24" style="margin-top: 16px">
-        <ElCol :span="6">
+        <ElCol :xs="12" :sm="12" :md="6" :lg="6">
           <div class="stat-item">
             <div class="stat-value amount">{{
               formatAmountFromTenThousandths(statistics.totalAmount)
@@ -301,19 +301,19 @@
             <div class="stat-label">总金额</div>
           </div>
         </ElCol>
-        <ElCol :span="6">
+        <ElCol :xs="12" :sm="12" :md="6" :lg="6">
           <div class="stat-item">
             <div class="stat-value">{{ statistics.cashCount }}</div>
             <div class="stat-label">现金结算</div>
           </div>
         </ElCol>
-        <ElCol :span="6">
+        <ElCol :xs="12" :sm="12" :md="6" :lg="6">
           <div class="stat-item">
             <div class="stat-value">{{ statistics.provincialInsuranceCount }}</div>
             <div class="stat-label">省直医保</div>
           </div>
         </ElCol>
-        <ElCol :span="6">
+        <ElCol :xs="12" :sm="12" :md="6" :lg="6">
           <div class="stat-item">
             <div class="stat-value">{{ statistics.wuhanInsuranceCount }}</div>
             <div class="stat-label">武汉医保</div>
@@ -321,7 +321,7 @@
         </ElCol>
       </ElRow>
       <ElRow :gutter="24" style="margin-top: 16px">
-        <ElCol :span="6">
+        <ElCol :xs="12" :sm="12" :md="6" :lg="6">
           <div class="stat-item">
             <div class="stat-value">{{ statistics.treatmentItemsCount }}</div>
             <div class="stat-label">治疗项目数</div>
@@ -701,8 +701,8 @@
     } catch (error) {
       console.error('加载医师列表失败:', error)
       doctorList.value = [
-        { id: 1, name: '李明' },
-        { id: 2, name: '张丽' }
+        { id: 1, name: '主治医师A' },
+        { id: 2, name: '主治医师B' }
       ]
     }
   }

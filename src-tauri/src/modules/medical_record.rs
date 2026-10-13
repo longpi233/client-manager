@@ -53,21 +53,23 @@ pub async fn create_unified_medical_record(
 ) -> Result<ApiResponse<i64>, String> {
     println!("Creating medical record: {:?}", params);
     let db = get_database();
-    let conn = db.get_connection();
+    let mut conn = db.get_connection();
     let now = Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
 
     // 验证必要字段
-    if params.customer_name.is_empty() {
+    if params.customer_name.trim().is_empty() {
         return Err("患者姓名不能为空".to_string());
     }
-    if params.diagnosis.is_empty() {
+    if params.diagnosis.trim().is_empty() {
         return Err("诊断信息不能为空".to_string());
     }
 
-    println!("开始插入主医疗记录，患者: {}", params.customer_name);
+    println!("开始原子事务插入医疗记录与明细，患者: {}", params.customer_name);
+
+    let tx = conn.transaction().map_err(|e| format!("开启事务失败: {}", e))?;
 
     // 插入主记录
-    let result = conn.execute(
+    let insert_result = tx.execute(
         "INSERT INTO medical_records (
             data_type, customer_name, gender, age, telephone, time_of_visit, 
             trade_type, diagnosis, note, total_amount, doctor_id, doctor_name, 
@@ -101,125 +103,80 @@ pub async fn create_unified_medical_record(
         ],
     );
 
-    match result {
-        Ok(_) => {
-            let record_id = conn.last_insert_rowid();
+    if let Err(e) = insert_result {
+        return Err(format!(
+            "插入主医疗记录失败 - 患者: '{}', 诊断: '{}', 记录类型: '{}', 医生: '{}', 数据库错误: {}",
+            params.customer_name,
+            params.diagnosis,
+            params.data_type,
+            params.doctor_name.as_deref().unwrap_or("未指定"),
+            e
+        ));
+    }
 
-            // 插入治疗项目记录
-            if let Some(treatment_items) = params.treatment_items {
-                for (index, item) in treatment_items.iter().enumerate() {
-                    println!("插入治疗项目 #{}: {:?}", index + 1, item);
-                    
-                    let insert_result = conn.execute(
-                        "INSERT INTO medical_treatment_items (
-                            medical_record_id, treatment_item, count, 
-                            unit_price, total_price, created_at
-                        ) VALUES (?, ?, ?, ?, ?, ?)",
-                        params![
-                            record_id,
-                            item.treatment_item,
-                            item.count,
-                            item.unit_price,
-                            item.total_price,
-                            now
-                        ],
-                    );
-                    
-                    match insert_result {
-                        Ok(rows_affected) => {
-                            println!("治疗项目 #{} 插入成功，影响行数: {}", index + 1, rows_affected);
-                        }
-                        Err(e) => {
-                            let error_msg = format!(
-                                "插入治疗项目失败 - 项目名称: '{}', 数量: {}, 单价: {}, 总价: {}, 错误: {}",
-                                item.treatment_item,
-                                item.count,
-                                item.unit_price,
-                                item.total_price,
-                                e
-                            );
-                            eprintln!("{}", error_msg);
-                            
-                            // 尝试回滚：删除已插入的主记录
-                            if let Err(rollback_error) = conn.execute("DELETE FROM medical_records WHERE rowid = ?", params![record_id]) {
-                                eprintln!("回滚主记录失败: {}", rollback_error);
-                            } else {
-                                println!("已回滚主记录 ID: {}", record_id);
-                            }
-                            
-                            return Err(error_msg);
-                        }
-                    }
-                }
-            }
+    let record_id = tx.last_insert_rowid();
 
-            // 插入中医中药记录
-            if let Some(prescription_items) = params.prescription_items {
-                for (index, item) in prescription_items.iter().enumerate() {
-                    println!("插入中医中药项目 #{}: {:?}", index + 1, item);
-                    
-                    let insert_result = conn.execute(
-                        "INSERT INTO medical_prescription_items (
-                            medical_record_id, medicine_name, grams, 
-                            unit_price, total_price, created_at
-                        ) VALUES (?, ?, ?, ?, ?, ?)",
-                        params![
-                            record_id,
-                            item.medicine_name,
-                            item.grams,
-                            item.unit_price,
-                            item.total_price,
-                            now
-                        ],
-                    );
-                    
-                    match insert_result {
-                        Ok(rows_affected) => {
-                            println!("中医中药项目 #{} 插入成功，影响行数: {}", index + 1, rows_affected);
-                        }
-                        Err(e) => {
-                            let error_msg = format!(
-                                "插入中医中药项目失败 - 项目名称: '{}', 剂量: {}, 单价: {}, 总价: {}, 错误: {}",
-                                item.medicine_name,
-                                item.grams,
-                                item.unit_price,
-                                item.total_price,
-                                e
-                            );
-                            eprintln!("{}", error_msg);
-                            
-                            // 尝试回滚：删除已插入的主记录
-                            if let Err(rollback_error) = conn.execute("DELETE FROM medical_records WHERE rowid = ?", params![record_id]) {
-                                eprintln!("回滚主记录失败: {}", rollback_error);
-                            } else {
-                                println!("已回滚主记录 ID: {}", record_id);
-                            }
-                            
-                            return Err(error_msg);
-                        }
-                    }
-                }
-            }
-
-            Ok(ApiResponse {
-                code: 200,
-                msg: "医疗记录创建成功".to_string(),
-                data: record_id,
-            })
-        }
-        Err(e) => {
-            let error_msg = format!(
-                "插入主医疗记录失败 - 患者: '{}', 诊断: '{}', 记录类型: '{}', 医生: '{}', 数据库错误: {}",
-                params.customer_name, 
-                params.diagnosis, 
-                params.data_type, 
-                params.doctor_name.as_deref().unwrap_or("未指定"), 
-                e
+    // 插入治疗项目记录
+    if let Some(treatment_items) = params.treatment_items {
+        for (index, item) in treatment_items.iter().enumerate() {
+            println!("插入治疗项目 #{}: {:?}", index + 1, item);
+            let res = tx.execute(
+                "INSERT INTO medical_treatment_items (
+                    medical_record_id, treatment_item, count, 
+                    unit_price, total_price, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?)",
+                params![
+                    record_id,
+                    item.treatment_item,
+                    item.count,
+                    item.unit_price,
+                    item.total_price,
+                    now
+                ],
             );
-            eprintln!("{}", error_msg);
-            Err(error_msg)
+            if let Err(e) = res {
+                return Err(format!(
+                    "插入治疗项目失败 - 项目名称: '{}', 数量: {}, 单价: {}, 总价: {}, 错误: {}",
+                    item.treatment_item, item.count, item.unit_price, item.total_price, e
+                ));
+            }
         }
     }
+
+    // 插入中医中药处方明细
+    if let Some(prescription_items) = params.prescription_items {
+        for (index, item) in prescription_items.iter().enumerate() {
+            println!("插入中医中药项目 #{}: {:?}", index + 1, item);
+            let res = tx.execute(
+                "INSERT INTO medical_prescription_items (
+                    medical_record_id, medicine_name, grams, 
+                    unit_price, total_price, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?)",
+                params![
+                    record_id,
+                    item.medicine_name,
+                    item.grams,
+                    item.unit_price,
+                    item.total_price,
+                    now
+                ],
+            );
+            if let Err(e) = res {
+                return Err(format!(
+                    "插入中医中药项目失败 - 项目名称: '{}', 剂量: {}, 单价: {}, 总价: {}, 错误: {}",
+                    item.medicine_name, item.grams, item.unit_price, item.total_price, e
+                ));
+            }
+        }
+    }
+
+    tx.commit().map_err(|e| format!("提交事务失败: {}", e))?;
+
+    Ok(ApiResponse {
+        code: 200,
+        msg: "医疗记录创建成功".to_string(),
+        data: record_id,
+    })
 }
 
 // 查询医疗记录列表 (统一接口)

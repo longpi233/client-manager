@@ -327,9 +327,7 @@ pub async fn get_chinese_medicine_item(
 
     let mut stmt = conn
         .prepare(
-            "SELECT id, name, description, category, unit_price, stock_quantity, 
-             efficacy, usage, contraindications, created_at, updated_at 
-             FROM chinese_medicines WHERE id = ?1",
+            "SELECT id, name, unit_price, description, created_at, updated_at FROM chinese_medicines WHERE id = ?1",
         )
         .map_err(|e| format!("准备查询语句失败: {}", e))?;
 

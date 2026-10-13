@@ -145,8 +145,9 @@ impl DataManagement {
 
         let backup_path = backup_dir.join(&backup_filename);
 
-        // 复制数据库文件
-        fs::copy(&db_path, &backup_path)?;
+        // 使用原生 SQLite 热备份
+        let db = database::get_database();
+        db.backup_database(&backup_path)?;
 
         let metadata = fs::metadata(&backup_path)?;
 

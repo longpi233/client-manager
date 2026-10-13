@@ -69,20 +69,20 @@ pub async fn get_institution_info() -> Result<ApiResponse<InstitutionInfo>, Stri
         let doctor_management: Vec<DoctorBasic> = if doctor_management_json.is_empty() {
             vec![
                 DoctorBasic {
-                    name: "李明".to_string(),
+                    name: "主治医师A".to_string(),
                 },
                 DoctorBasic {
-                    name: "张丽".to_string(),
+                    name: "主治医师B".to_string(),
                 },
             ]
         } else {
             serde_json::from_str(&doctor_management_json).unwrap_or_else(|_| {
                 vec![
                     DoctorBasic {
-                        name: "李明".to_string(),
+                        name: "主治医师A".to_string(),
                     },
                     DoctorBasic {
-                        name: "张丽".to_string(),
+                        name: "主治医师B".to_string(),
                     },
                 ]
             })
@@ -108,14 +108,14 @@ pub async fn get_institution_info() -> Result<ApiResponse<InstitutionInfo>, Stri
             // 如果没有数据，创建默认数据
             let default_info = InstitutionInfo {
                 id: Some(1),
-                institution_name: "默认健康诊所".to_string(),
+                institution_name: "示例门诊中心".to_string(),
                 department_settings: "中医科、针灸科、推拿科".to_string(),
                 doctor_management: vec![
                     DoctorBasic {
-                        name: "李明".to_string(),
+                        name: "主治医师A".to_string(),
                     },
                     DoctorBasic {
-                        name: "张丽".to_string(),
+                        name: "主治医师B".to_string(),
                     },
                 ],
                 create_time: Some(chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string()),

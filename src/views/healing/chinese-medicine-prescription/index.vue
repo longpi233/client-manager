@@ -338,6 +338,8 @@
           </ElCol>
         </ElRow>
       </ElForm>
+      <!-- 原生打印与导出预览模态框 -->
+      <PrintPreviewModal ref="printPreviewRef" />
     </div>
   </div>
 </template>
@@ -361,16 +363,15 @@
     type FormInstance
   } from 'element-plus'
   import { Plus } from '@element-plus/icons-vue'
-  import { getInstitutionInfo } from '@/api/institutionApi'
   import { getChineseMedicineList } from '@/api/chineseMedicineApi'
   import { createPrescriptionRecord } from '@/api/unifiedMedicalRecordApi'
   import { GENDER_OPTIONS, TRADE_TYPE_OPTIONS } from '@/types/medical'
+  import PrintPreviewModal from '@/components/custom/print-preview/PrintPreviewModal.vue'
+  import { useDoctorList } from '@/composables/useDoctorList'
   import {
-    printPrescription as printPrescriptionTemplate,
-    printChineseMedicalRecord as printChineseMedicalRecordTemplate,
-    // printFeeList as printFeeListTemplate,
+    generatePrescriptionHTML,
+    generateChineseMedicalRecordHTML,
     type PrescriptionData
-    // type FeeListData
   } from '@/utils/print'
   import {
     formatAmountFromTenThousandths
@@ -434,26 +435,9 @@
   const chineseMedicinesLoading = ref(false)
   const isSubmitting = ref(false) // 防止重复提交
 
-  // 医师数据
-  const doctorList = ref<{ id: number; name: string }[]>([])
-
-  // 加载医师列表
-  const loadDoctorList = async () => {
-    try {
-      const res = await getInstitutionInfo()
-      if (res.code === 200) {
-        // 从机构信息中获取医师列表
-        doctorList.value = res.data.doctor_management.map((doctor, index) => ({
-          id: index + 1,
-          name: doctor.name
-        }))
-      } else {
-        console.error('获取机构信息失败:', res.msg)
-      }
-    } catch (error) {
-      console.error('加载医师列表失败:', error)
-    }
-  }
+  // 医师数据与加载
+  const { doctorList, loadDoctorList } = useDoctorList()
+  const printPreviewRef = ref<InstanceType<typeof PrintPreviewModal> | null>(null)
 
   // 中药数据
   const chineseMedicines = ref<Api.ChineseMedicine.Item[]>([])
@@ -684,7 +668,9 @@
       await formRef.value?.validate()
 
       // 获取选中医师的姓名
-      const selectedDoctor = doctorList.value.find((doctor) => doctor.id === Number(form.doctorId))
+      const selectedDoctor = doctorList.value.find(
+        (doctor) => String(doctor.id) === String(form.doctorId)
+      )
       const doctorName = selectedDoctor?.name || '未知医师'
 
       // 构造中医中药数据 (统一API)
@@ -801,11 +787,17 @@
         doses: form.doses || 1,
         single_dose_amount: singleDoseAmountTenThousandths.value,
         total_amount: totalAmountTenThousandths.value,
-        doctor_name: doctorList.value.find((doctor) => doctor.id === parseInt(form.doctorId))?.name
+        doctor_name: doctorList.value.find((doctor) => String(doctor.id) === String(form.doctorId))
+          ?.name
       }
 
-      printPrescriptionTemplate(printData)
-      ElMessage.success('中医中药打印成功')
+      const htmlContent = await generatePrescriptionHTML(printData)
+      printPreviewRef.value?.open({
+        title: '中药处方笺',
+        htmlContent,
+        filename: `${form.customerName || '患者'}_中药处方`,
+        paperSize: 'a5'
+      })
 
       ElMessageBox.confirm('是否确认提交中医中药登记？', '提交登记', {
         confirmButtonText: '确认',
@@ -854,11 +846,17 @@
         doses: form.doses || 1,
         single_dose_amount: singleDoseAmountTenThousandths.value,
         total_amount: totalAmountTenThousandths.value,
-        doctor_name: doctorList.value.find((doctor) => doctor.id === parseInt(form.doctorId))?.name
+        doctor_name: doctorList.value.find((doctor) => String(doctor.id) === String(form.doctorId))
+          ?.name
       }
 
-      await printChineseMedicalRecordTemplate(printData)
-      ElMessage.success('中医病历打印成功')
+      const htmlContent = await generateChineseMedicalRecordHTML(printData)
+      printPreviewRef.value?.open({
+        title: '中医病历',
+        htmlContent,
+        filename: `${form.customerName || '患者'}_中医病历`,
+        paperSize: 'a4'
+      })
     } catch (error) {
       console.error('打印中医病历失败:', error)
       ElMessage.error('请先完善必填信息')
@@ -894,7 +892,7 @@
   //         }
   //       }),
   //       total_amount: totalAmountTenThousandths.value,
-  //       doctor_name: doctorList.value.find((doctor) => doctor.id === parseInt(form.doctorId))?.name
+  //       doctor_name: doctorList.value.find((doctor) => String(doctor.id) === String(form.doctorId))?.name
   //     }
 
   //     printFeeListTemplate(feeListData)
@@ -1039,7 +1037,8 @@
 
   .form-actions {
     display: flex;
-    gap: 5px;
+    flex-wrap: wrap;
+    gap: 8px;
     align-items: center;
     justify-content: flex-end;
     padding-top: 20px;

@@ -2,7 +2,7 @@
 name = "维康诊所管理系统"
 version = "1.0.0"
 description = "诊所管理系统"
-authors = ["long"]
+authors = ["OpenSource Contributors"]
 license = "MIT License"
 repository = ""
 edition = "2021"
@@ -25,7 +25,7 @@ tauri = { version = "2.7.0", features = [] }
 tauri-plugin-log = "2"
 chrono = { version = "0.4", features = ["serde"] }
 pinyin = "0.10"
-rusqlite = { version = "0.32", features = ["bundled", "chrono"] }
+rusqlite = { version = "0.32", features = ["bundled", "chrono", "backup"] }
 tokio = { version = "1.0", features = ["full"] }
 uuid = { version = "1.0", features = ["v4"] }
 dirs = "5.0"

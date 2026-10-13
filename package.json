@@ -11,7 +11,7 @@
     "lint:prettier": "prettier --write \"**/*.{js,cjs,ts,json,tsx,css,less,scss,vue,html,md}\"",
     "lint:stylelint": "stylelint  \"**/*.{css,scss,vue}\" --fix",
     "lint:lint-staged": "lint-staged",
-    "prepare": "husky",
+    "prepare": "husky || true",
     "commit": "git-cz",
     "commit:npx": "npx cz",
     "commit:cz": "git-cz",
@@ -117,5 +117,20 @@
     "vue-demi": "^0.14.9",
     "vue-img-cutter": "^3.0.5",
     "vue-tsc": "~2.1.6"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@parcel/watcher",
+      "core-js",
+      "cwebp-bin",
+      "es5-ext",
+      "esbuild",
+      "gifsicle",
+      "jpegtran-bin",
+      "mozjpeg",
+      "optipng-bin",
+      "pngquant-bin",
+      "vue-demi"
+    ]
   }
 }

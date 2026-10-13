@@ -38,6 +38,9 @@
       </template>
     </template>
   </ElDialog>
+
+  <!-- 内置原生打印与导出预览模态框 -->
+  <PrintPreviewModal ref="printPreviewRef" />
 </template>
 
 <script setup lang="ts">
@@ -46,12 +49,13 @@
   import CustomerDetail from './components/CustomerDetail.vue'
   import MedicalDetail from './components/MedicalDetail.vue'
   import PrescriptionDetail from './components/PrescriptionDetail.vue'
+  import PrintPreviewModal from '@/components/custom/print-preview/PrintPreviewModal.vue'
   import {
-    printMedicalRecord,
-    printFeeList,
-    printPrescription,
-    printTreatmentPrescription,
-    printChineseMedicalRecord,
+    generateMedicalRecordHTML,
+    generateFeeListHTML,
+    generatePrescriptionHTML,
+    generateTreatmentPrescriptionHTML,
+    generateChineseMedicalRecordHTML,
     type MedicalRecordData,
     type FeeListData,
     type PrescriptionData,
@@ -60,6 +64,8 @@
   import type { UnifiedMedicalRecord } from '@/types/medical'
 
   defineOptions({ name: 'DataInquiryDetail' })
+
+  const printPreviewRef = ref<InstanceType<typeof PrintPreviewModal> | null>(null)
 
   interface Props {
     modelValue: boolean
@@ -130,8 +136,13 @@
         doctor_name: props.selectedItem.doctor_name
       }
 
-      await printMedicalRecord(medicalData)
-      ElMessage.success('针灸理疗打印成功')
+      const htmlContent = await generateMedicalRecordHTML(medicalData)
+      printPreviewRef.value?.open({
+        title: '针灸理疗门诊病历',
+        htmlContent,
+        filename: `${props.selectedItem.customer_name || '患者'}_门诊病历`,
+        paperSize: 'a4'
+      })
     } catch (error) {
       console.error('打印门诊病历失败:', error)
       ElMessage.error('打印失败，请重试')
@@ -169,8 +180,13 @@
         doctor_name: props.selectedItem.doctor_name
       }
 
-      await printFeeList(feeListData)
-      ElMessage.success('费用清单打印成功')
+      const htmlContent = await generateFeeListHTML(feeListData)
+      printPreviewRef.value?.open({
+        title: '门诊费用清单',
+        htmlContent,
+        filename: `${props.selectedItem.customer_name || '患者'}_费用清单`,
+        paperSize: 'a4'
+      })
     } catch (error) {
       console.error('打印费用清单失败:', error)
       ElMessage.error('打印失败，请重试')
@@ -201,8 +217,13 @@
         time_of_visit: props.selectedItem.time_of_visit
       }
 
-      await printTreatmentPrescription(treatmentPrescriptionData)
-      ElMessage.success('治疗处方单打印成功')
+      const htmlContent = await generateTreatmentPrescriptionHTML(treatmentPrescriptionData)
+      printPreviewRef.value?.open({
+        title: '治疗处方单',
+        htmlContent,
+        filename: `${props.selectedItem.customer_name || '患者'}_治疗处方单`,
+        paperSize: 'a5'
+      })
     } catch (error) {
       console.error('打印治疗处方单失败:', error)
       ElMessage.error('打印失败，请重试')
@@ -243,8 +264,13 @@
         doctor_name: props.selectedItem.doctor_name
       }
 
-      await printChineseMedicalRecord(medicalRecordData)
-      ElMessage.success('中医病历打印成功')
+      const htmlContent = await generateChineseMedicalRecordHTML(medicalRecordData)
+      printPreviewRef.value?.open({
+        title: '中医病历',
+        htmlContent,
+        filename: `${props.selectedItem.customer_name || '患者'}_中医病历`,
+        paperSize: 'a4'
+      })
     } catch (error) {
       console.error('打印中医病历失败:', error)
       ElMessage.error('打印失败，请重试')
@@ -281,8 +307,13 @@
         doctor_name: props.selectedItem.doctor_name
       }
 
-      await printPrescription(prescriptionData)
-      ElMessage.success('中医中药打印成功')
+      const htmlContent = await generatePrescriptionHTML(prescriptionData)
+      printPreviewRef.value?.open({
+        title: '中药处方笺',
+        htmlContent,
+        filename: `${props.selectedItem.customer_name || '患者'}_中药处方`,
+        paperSize: 'a5'
+      })
     } catch (error) {
       console.error('打印中药处方失败:', error)
       ElMessage.error('打印失败，请重试')

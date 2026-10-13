@@ -342,6 +342,8 @@
           </ElCol>
         </ElRow>
       </ElForm>
+      <!-- 原生打印与导出预览模态框 -->
+      <PrintPreviewModal ref="printPreviewRef" />
     </div>
   </div>
 </template>
@@ -365,14 +367,15 @@
     type FormInstance
   } from 'element-plus'
   import { Plus } from '@element-plus/icons-vue'
-  import { getInstitutionInfo } from '@/api/institutionApi'
   import { getHealingList } from '@/api/healingApi'
   import { createMedicalRecord as createMedicalRecord } from '@/api/unifiedMedicalRecordApi'
   import { GENDER_OPTIONS, TRADE_TYPE_OPTIONS } from '@/types/medical'
+  import PrintPreviewModal from '@/components/custom/print-preview/PrintPreviewModal.vue'
+  import { useDoctorList } from '@/composables/useDoctorList'
   import {
-    printMedicalRecord as printMedicalRecordTemplate,
-    printFeeList as printFeeListTemplate,
-    printTreatmentPrescription as printTreatmentPrescriptionTemplate,
+    generateMedicalRecordHTML,
+    generateFeeListHTML,
+    generateTreatmentPrescriptionHTML,
     type MedicalRecordData,
     type FeeListData,
     type TreatmentPrescriptionData
@@ -434,26 +437,9 @@
   const healingItemsLoading = ref(false)
   const isSubmitting = ref(false) // 防止重复提交
 
-  // 医师数据
-  const doctorList = ref<{ id: number; name: string }[]>([])
-
-  // 加载医师列表
-  const loadDoctorList = async () => {
-    try {
-      const res = await getInstitutionInfo()
-      if (res.code === 200) {
-        // 从机构信息中获取医师列表
-        doctorList.value = res.data.doctor_management.map((doctor, index) => ({
-          id: index + 1,
-          name: doctor.name
-        }))
-      } else {
-        console.error('获取机构信息失败:', res.msg)
-      }
-    } catch (error) {
-      console.error('加载医师列表失败:', error)
-    }
-  }
+  // 医师数据与加载
+  const { doctorList, loadDoctorList } = useDoctorList()
+  const printPreviewRef = ref<InstanceType<typeof PrintPreviewModal> | null>(null)
 
   // 治疗项目数据
   const healingItems = ref<Api.Healing.Item[]>([])
@@ -713,7 +699,8 @@
           }
         }),
         doctor_id: parseInt(form.doctorId),
-        doctor_name: doctorList.value.find((doctor) => doctor.id === parseInt(form.doctorId))?.name
+        doctor_name: doctorList.value.find((doctor) => String(doctor.id) === String(form.doctorId))
+          ?.name
       }
 
       console.log('准备发送的针灸理疗数据 (统一API):', medicalRecordData)
@@ -790,11 +777,17 @@
             total_price: unitPrice * item.count
           }
         }),
-        doctor_name: doctorList.value.find((doctor) => doctor.id === parseInt(form.doctorId))?.name
+        doctor_name: doctorList.value.find((doctor) => String(doctor.id) === String(form.doctorId))
+          ?.name
       }
 
-      printMedicalRecordTemplate(printData)
-      ElMessage.success('针灸理疗打印成功')
+      const htmlContent = await generateMedicalRecordHTML(printData)
+      printPreviewRef.value?.open({
+        title: '针灸理疗门诊病历',
+        htmlContent,
+        filename: `${form.customerName || '患者'}_门诊病历`,
+        paperSize: 'a4'
+      })
 
       ElMessageBox.confirm('是否确认提交针灸理疗登记？', '提交登记', {
         confirmButtonText: '确认',
@@ -842,11 +835,17 @@
           }
         }),
         total_amount: totalAmountTenThousandths.value,
-        doctor_name: doctorList.value.find((doctor) => doctor.id === parseInt(form.doctorId))?.name
+        doctor_name: doctorList.value.find((doctor) => String(doctor.id) === String(form.doctorId))
+          ?.name
       }
 
-      printFeeListTemplate(printData)
-      ElMessage.success('费用清单打印成功')
+      const htmlContent = await generateFeeListHTML(printData)
+      printPreviewRef.value?.open({
+        title: '门诊费用清单',
+        htmlContent,
+        filename: `${form.customerName || '患者'}_费用清单`,
+        paperSize: 'a4'
+      })
 
       ElMessageBox.confirm('是否确认提交针灸理疗登记？', '提交登记', {
         confirmButtonText: '确认',
@@ -889,8 +888,13 @@
         }))
       }
 
-      printTreatmentPrescriptionTemplate(printData)
-      ElMessage.success('治疗处方单打印成功')
+      const htmlContent = await generateTreatmentPrescriptionHTML(printData)
+      printPreviewRef.value?.open({
+        title: '治疗处方单',
+        htmlContent,
+        filename: `${form.customerName || '患者'}_治疗处方单`,
+        paperSize: 'a5'
+      })
 
       ElMessageBox.confirm('是否确认提交针灸理疗登记？', '提交登记', {
         confirmButtonText: '确认',
@@ -1044,7 +1048,8 @@
 
   .form-actions {
     display: flex;
-    gap: 5px;
+    flex-wrap: wrap;
+    gap: 8px;
     align-items: center;
     justify-content: flex-end;
     padding-top: 20px;

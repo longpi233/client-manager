@@ -39,8 +39,8 @@
 
       <!-- 散客登记搜索 -->
       <div class="search-form">
-        <ElRow :gutter="20">
-          <ElCol :span="6">
+        <ElRow :gutter="16">
+          <ElCol :xs="24" :sm="12" :md="12" :lg="6">
             <ElFormItem label="患者姓名">
               <ElInput
                 v-model="searchParams.customer_name"
@@ -50,7 +50,7 @@
               />
             </ElFormItem>
           </ElCol>
-          <ElCol :span="6">
+          <ElCol :xs="24" :sm="12" :md="12" :lg="6">
             <ElFormItem label="联系电话">
               <ElInput
                 v-model="searchParams.telephone"
@@ -60,7 +60,7 @@
               />
             </ElFormItem>
           </ElCol>
-          <ElCol :span="6">
+          <ElCol :xs="24" :sm="12" :md="12" :lg="6">
             <ElFormItem label="诊断信息">
               <ElInput
                 v-model="searchParams.diagnosis"
@@ -70,7 +70,7 @@
               />
             </ElFormItem>
           </ElCol>
-          <ElCol :span="6">
+          <ElCol :xs="24" :sm="12" :md="12" :lg="6">
             <ElFormItem label="就诊时间">
               <ElDatePicker
                 v-model="dateRange"
@@ -85,8 +85,8 @@
             </ElFormItem>
           </ElCol>
         </ElRow>
-        <ElRow :gutter="20">
-          <ElCol :span="6">
+        <ElRow :gutter="16">
+          <ElCol :xs="24" :sm="12" :md="12" :lg="6">
             <ElFormItem label="患者性别">
               <ElSelect
                 v-model="searchParams.gender"
@@ -103,7 +103,7 @@
               </ElSelect>
             </ElFormItem>
           </ElCol>
-          <ElCol :span="12">
+          <ElCol :xs="24" :sm="12" :md="12" :lg="12">
             <ElFormItem label="年龄范围">
               <div class="age-range-input">
                 <ElInputNumber
@@ -126,7 +126,7 @@
               </div>
             </ElFormItem>
           </ElCol>
-          <ElCol :span="6">
+          <ElCol :xs="24" :sm="12" :md="12" :lg="6">
             <ElFormItem label="结算类型">
               <ElSelect
                 v-model="searchParams.trade_type"

@@ -26,7 +26,6 @@
         "acceptFirstMouse": false,
         "tabbingIdentifier": "main",
         "shadow": true,
-        "windowClassname": "healthclinic-management",
         "visible": true
       }
     ],
